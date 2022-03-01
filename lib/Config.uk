@@ -7,7 +7,7 @@
 
 config HAVE_BOOTENTRY
        bool
-       default n
+       default y # Temporarily set to y for riscv debugging
 
 config HAVE_LIBC
        bool
