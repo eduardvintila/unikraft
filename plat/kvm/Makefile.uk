@@ -3,6 +3,20 @@
 ##
 $(eval $(call addplat_s,kvm,$(CONFIG_PLAT_KVM)))
 
+ifeq ($(CONFIG_ARCH_RISCV_64),y)
+$(eval $(call addplatlib,kvm,libkvmplat))
+UK_PLAT_KVM_DEF_LDS            := $(CONFIG_UK_BASE)/plat/kvm/riscv/link64.lds.S
+
+LIBKVMPLAT_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBKVMPLAT_ASINCLUDES-y        += -I$(UK_PLAT_COMMON_BASE)/include
+
+LIBKVMPLAT_ASFLAGS             += -DKVMPLAT
+LIBKVMPLAT_CFLAGS              += -DKVMPLAT
+LIBKVMPLAT_CXXFLAGS            += -DKVMPLAT
+
+LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/entry64.S
+LIBKVMPLAT_SRCS-y              += $(UK_PLAT_KVM_DEF_LDS)
+else
 ##
 ## KVM platform library registration
 ##
@@ -212,4 +226,6 @@ endif
 ifeq ($(findstring y,$(CONFIG_LIBGICV3)),y)
 LIBKVMGIC_SRCS-y += $(UK_PLAT_DRIVERS_BASE)/gic/gic-v3.c
 endif
+endif
+
 endif
