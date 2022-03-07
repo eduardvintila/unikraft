@@ -4,6 +4,14 @@
  *
  * TODO: Copyright notice
  *
+ * EXTRACT_BYTE, CPU_TO_FDT32 and FDT_MAGIC macros are taken from libfdt:
+ * Copyright (C) 2006 David Gibson, IBM Corporation.
+ * Copyright 2012 Kim Phillips, Freescale Semiconductor.
+ *
+ * memmove is taken from nolibc:
+ * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
+ * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,47 +38,58 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <uk/arch/limits.h>
-#include <uk/asm.h>
-#include <uk/plat/common/sections.h>
 #include <uk/config.h>
+#include <uk/arch/limits.h>
+#include <uk/arch/types.h>
+#include <uk/plat/common/sections.h>
+#include <uk/essentials.h>
 
-.section .bss
-.space 4096
-bootstack: /* TODO: Check stack alignment? */
+#define _EXTRACT_BYTE(x, n)	((__u32)((__u8 *)(x))[n])
+#define _CPU_TO_FDT32(x) ((_EXTRACT_BYTE(x, 0) << 24) | (_EXTRACT_BYTE(x, 1) << 16) | \
+			 (_EXTRACT_BYTE(x, 2) << 8) | _EXTRACT_BYTE(x, 3))
+#define _FDT_MAGIC	0xd00dfeed
 
-.section .text
-ENTRY(_libkvmplat_entry)
-	/*
-	 * As per the RISC-V SBI spec, execution starts in supervisor mode, with each hart (hardware thread)
-	 * having its hartid placed in the a0 register. Choose the hart with the id 0 to manage the booting
-	 * process and suspend the others for the moment.
-	 */
-	bnez a0, 2f
+extern void _setup_pagetables(void*);
+extern void _start_mmu(void);
 
-	/* TODO: Linker relaxation using the gp (global pointer) register. */
 
-	/* Setup the temporary bootstack */
-	la sp, bootstack
+/* Placeholder until we port nolibc */
+void *__memmove(void *dst, const void *src, unsigned int len)
+{
+	__u8 *d = dst;
+	const __u8 *s = src;
 
-	/* The a1 register holds the address of the DTB which is passed as a parameter to the C function */
-	call _libkvmplat_start
-2:
-	wfi
-	j 2b
+	if (src > dst) {
+		for (; len > 0; --len)
+			*(d++) = *(s++);
+	} else {
+		s += len - 1;
+		d += len - 1;
 
-END(_libkvmplat_entry)
+		for (; len > 0; --len)
+			*(d--) = *(s--);
+	}
 
-ENTRY(__start_mmu)
-	/* Enable paging */
-	csrw satp, a0
-	/* Flush the MMU cache */
-    sfence.vma x0, x0
+	return dst;
+}
 
-	ret
-END(__start_mmu)
+void _libkvmplat_start(void *opaque, void *dtb_pointer)
+{
+    __u32 dtb_magic, dtb_size;
+    void *pagetables_start_addr;
 
-ENTRY(_libkvmplat_newstack)
-	wfi
-    j _libkvmplat_newstack
-END(_libkvmplat_newstack)
+    dtb_magic = _CPU_TO_FDT32(dtb_pointer);
+    if (dtb_magic != _FDT_MAGIC)
+        return; /* invalid DTB, UK_CRASH? */
+
+    dtb_size = _CPU_TO_FDT32((__u32 *) dtb_pointer + 1);
+
+    /* Move the DTB at the end of the kernel image */
+    __memmove((void *) __END, dtb_pointer, dtb_size);
+
+    /* Setup the page tables at the end of the DTB */
+    pagetables_start_addr = (void *) ALIGN_UP(__END + dtb_size, __PAGE_SIZE);
+    _setup_pagetables(pagetables_start_addr);
+
+	_start_mmu();
+}
