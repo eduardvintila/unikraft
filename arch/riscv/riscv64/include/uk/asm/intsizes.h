@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
+ * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
+ *          Wei Chen <Wei.Chen@arm.com>
  *
- * TODO: Copyright notice
+ *
+ * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2018, Arm Ltd., All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,47 +33,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <uk/arch/limits.h>
-#include <uk/asm.h>
-#include <uk/plat/common/sections.h>
-#include <uk/config.h>
+#if ((!defined __UKARCH_TYPES_H__) && (!defined __UKARCH_LIMITS_H__))
+#error Do not include this header directly
+#endif
 
-.section .bss
-.space 4096
-bootstack: /* TODO: Check stack alignment? */
-
-.section .text
-ENTRY(_libkvmplat_entry)
-	/*
-	 * As per the RISC-V SBI spec, execution starts in supervisor mode, with each hart (hardware thread)
-	 * having its hartid placed in the a0 register. Choose the hart with the id 0 to manage the booting
-	 * process and suspend the others for the moment.
-	 */
-	bnez a0, 2f
-
-	/* TODO: Linker relaxation using the gp (global pointer) register. */
-
-	/* Setup the temporary bootstack */
-	la sp, bootstack
-
-	/* The a1 register holds the address of the DTB which is passed as a parameter to the C function */
-	call _libkvmplat_start
-2:
-	wfi
-	j 2b
-
-END(_libkvmplat_entry)
-
-ENTRY(__start_mmu)
-	/* Enable paging */
-	csrw satp, a0
-	/* Flush the MMU cache */
-    sfence.vma x0, x0
-
-	ret
-END(__start_mmu)
-
-ENTRY(_libkvmplat_newstack)
-	wfi
-    j _libkvmplat_newstack
-END(_libkvmplat_newstack)
+#define __C_IS_8    /* char */
+#define __S_IS_16   /* short */
+#define __I_IS_32   /* int */
+#define __L_IS_64   /* long */
+#define __LL_IS_64  /* long long */
+#define __PTR_IS_64 /* void * */
+#define __PHY_ADDR_IS_64 /* phys_addr */
