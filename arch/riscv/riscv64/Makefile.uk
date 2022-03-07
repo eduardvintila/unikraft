@@ -1,7 +1,7 @@
 # Placeholder flags for the QEMU RISC-V virt board
-ARCHFLAGS     += -D__RISCV_64__ -mabi=lp64 -march=rv64gc -mcmodel=medany -mstrict-align
+ARCHFLAGS     += -D__RISCV_64__ -mabi=lp64 -march=rv64gc -mcmodel=medany -mstrict-align -mno-relax
 # Don't use floating point registers for interrupt-safe routines.
-ISR_ARCHFLAGS += -D__RISCV_64__ -mabi=lp64 -march=rv64gc -mcmodel=medany -mstrict-align -mno-fdiv
+ISR_ARCHFLAGS += -D__RISCV_64__ -mabi=lp64 -march=rv64gc -mcmodel=medany -mstrict-align -mno-relax -mno-fdiv
 
 CINCLUDES   += -I$(CONFIG_UK_BASE)/arch/riscv/riscv64/include
 ASINCLUDES  += -I$(CONFIG_UK_BASE)/arch/riscv/riscv64/include
