@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
- *          Wei Chen <Wei.Chen@arm.com>
+ * Authors: Wei Chen <wei.chen@arm.com>
+ *			Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2019, NEC Laboratories Europe GmbH, NEC Corporation,
- *                     All rights reserved.
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) 2018, Arm Ltd. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,32 +31,67 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __KVM_CONFIG_H__
-#define __KVM_CONFIG_H__
+#ifndef __PLAT_COMMON_RISCV64_CPU_H__
+#define __PLAT_COMMON_RISCV64_CPU_H__
 
-#include <inttypes.h>
-#include <sys/types.h>
+#include <uk/essentials.h>
+#include <uk/arch/types.h>
 
-struct kvmplat_config_memregion {
-	uintptr_t start;
-	uintptr_t end;
-	size_t len;
-};
+/* TODO: Is inline assembly necessary? */
 
-struct kvmplat_config {
-	struct kvmplat_config_memregion heap;
-	struct kvmplat_config_memregion bstack;
-	struct kvmplat_config_memregion initrd;
-	/* `heap2` potentially exists only if `heap` exists */
-	struct kvmplat_config_memregion heap2;
+static inline __u8 ioreg_read8(const volatile __u8 *address)
+{
+	__u8 value;
 
-#if defined(CONFIG_ARCH_ARM_64) || defined(CONFIG_ARCH_RISCV_64)
-	struct kvmplat_config_memregion pagetable;
-	void *dtb;
+	asm volatile ("lb %0, 0(%1)" : "=r"(value) : "r"(address));
+	return value;
+}
+
+static inline __u16 ioreg_read16(const volatile __u16 *address)
+{
+	__u16 value;
+
+	asm volatile ("lh %0, 0(%1)" : "=r"(value) : "r"(address));
+	return value;
+}
+
+static inline __u32 ioreg_read32(const volatile __u32 *address)
+{
+	__u32 value;
+
+	asm volatile ("lw %0, 0(%1)" : "=r"(value) : "r"(address));
+	return value;
+}
+
+static inline __u64 ioreg_read64(const volatile __u64 *address)
+{
+	__u64 value;
+
+	asm volatile ("ld %0, 0(%1)" : "=r"(value) : "r"(address));
+	return value;
+}
+
+static inline void ioreg_write8(const volatile __u8 *address, __u8 value)
+{
+	asm volatile ("sb %0, 0(%1)" : : "rZ"(value), "r"(address));
+}
+
+static inline void ioreg_write16(const volatile __u16 *address,
+				 __u16 value)
+{
+	asm volatile ("sh %0, 0(%1)" : : "rZ"(value), "r"(address));
+}
+
+static inline void ioreg_write32(const volatile __u32 *address,
+				 __u32 value)
+{
+	asm volatile ("sw %0, 0(%1)" : : "rZ"(value), "r"(address));
+}
+
+static inline void ioreg_write64(const volatile __u64 *address,
+				 __u64 value)
+{
+	asm volatile ("sd %0, 0(%1)" : : "rZ"(value), "r"(address));
+}
+
 #endif
-};
-
-/* Initialized and defined in setup.c */
-extern struct kvmplat_config _libkvmplat_cfg;
-
-#endif /* __KVM_CONFIG_H__ */

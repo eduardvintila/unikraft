@@ -34,6 +34,7 @@
 #include <uk/arch/limits.h>
 #include <uk/arch/types.h>
 #include <uk/plat/common/sections.h>
+#include <string.h>
 
 #define PAGETABLE_SIZE __PAGE_SIZE
 #define PAGETABLE_ENTRIES _UL(1 << 9)
@@ -46,8 +47,8 @@
 #define PAGE_READ       _UL(1 << 1)
 #define PAGE_WRITE      _UL(1 << 2)
 #define PAGE_EXEC       _UL(1 << 3)
-#define PAGE_RW         PAGE_READ | PAGE_WRITE
-#define PAGE_RX         PAGE_READ | PAGE_EXEC
+#define PAGE_RW         (PAGE_READ | PAGE_WRITE)
+#define PAGE_RX         (PAGE_READ | PAGE_EXEC)
 #define PAGE_LINK       _UL(0) /* Entry is a link to the next level of page table */
 #define PAGE_VALID_LINK (PAGE_VALID | PAGE_LINK)
 
@@ -55,7 +56,7 @@
 #define PAGE_PPN(x)     (((__phys_addr)(x)) >> 2)
 
 /* Obtain the physical address stored in the page table entry *x* */
-#define PAGE_PPN_TO_ADDR(x) (((__phys_addr)(x) >> 10) << __PAGE_SHIFT)
+#define PAGE_PPN_TO_ADDR(x) ((void *)(((__phys_addr)(x) >> 10) << __PAGE_SHIFT))
 
 /* Get x's PPN */
 #define PPN(x) ((__phys_addr)(x) >> __PAGE_SHIFT)
@@ -81,7 +82,7 @@ int _l0_pagetables_cnt;
 extern void __start_mmu(__u64 satp);
 
 /*
- * Layout of a Sv39 virtual address, where VPN[i] is an index in the level i page table.
+ * Layout of an Sv39 virtual address, where VPN[i] is an index in the level i page table.
  *
  * Bits 39-63 must be equal to bit 38.
  *
@@ -105,19 +106,6 @@ extern void __start_mmu(__u64 satp);
  *
  * <1> TEXT|DATA|BSS|DTB|PAGETABLES|HEAP|BOOTSTACK
  */
-
-
-/* Placeholder until we port nolibc */
-void *_memset(void *ptr, int val, unsigned int len)
-{
-	__u8 *p = (__u8 *) ptr;
-
-	for (; len > 0; --len)
-		*(p++) = (__u8)val;
-
-	return ptr;
-}
-
 
 /**
  * Get the location of the L0 page table for the given L1 index.
@@ -193,14 +181,14 @@ void _start_mmu(void)
  */
 void _setup_pagetables(void *start)
 {
-    /* _memset(__BSS_START, 0, __END - __BSS_START); */
+    /* memset(__BSS_START, 0, __END - __BSS_START); */
 
     _l2_pagetable = start;
 
     /* Place the l1 table at the end of the l2 table */
     _l1_pagetable = _l2_pagetable + PAGETABLE_ENTRIES;
 
-    /* Map 0x0 - 0x7FFFFFFF as R/W */
+    /* Map 0x0 - 0x7FFFFFFF as read/write */
     _l2_pagetable[0] = PAGE_VALID | PAGE_RW   | PAGE_GLOBAL | PAGE_PPN(_UL(0x0));
     _l2_pagetable[1] = PAGE_VALID | PAGE_RW   | PAGE_GLOBAL | PAGE_PPN(_UL(0x40000000));
 
@@ -208,21 +196,29 @@ void _setup_pagetables(void *start)
     _l2_pagetable[2] = PAGE_VALID_LINK | PAGE_GLOBAL | PAGE_PPN(_l1_pagetable);
 
     /* Map the rest of the address space (0x8000000000 - 0xFFFFFFFFFF) as inaccessible */
-    _memset(_l2_pagetable + 3, PAGE_INVALID, (PAGETABLE_ENTRIES - 3) * sizeof(__pte));
+    memset(_l2_pagetable + 3, PAGE_INVALID, (PAGETABLE_ENTRIES - 3) * sizeof(__pte));
 
     /* Map the SBI firmware space 0x80000000 - 0x801FFFFF as inaccessible */
     _l1_pagetable[0] = PAGE_INVALID;
 
     /* Preemptively mark all entries in the L1 table as invalid */
-    _memset(_l1_pagetable + 1, PAGE_INVALID, (PAGETABLE_ENTRIES - 1) * sizeof(__pte));
+    memset(_l1_pagetable + 1, PAGE_INVALID, (PAGETABLE_ENTRIES - 1) * sizeof(__pte));
 
-    /* TODO: Map each section with its corresponding permissions */
+    /* Map the text section as read/executable only */
     _map_region(__TEXT, __ETEXT, PAGE_RX);
+
+    /* Map the sections between text and rodata as read/write */
     _map_region(__ETEXT, __RODATA, PAGE_RW);
-    _map_region(__RODATA, __ERODATA, PAGE_READ);
-    _map_region(__ERODATA, __END, PAGE_RW);
+
+    /* Map the rodata section and the constructor tables as read-only */
+    _map_region(__RODATA, __ECTORS, PAGE_READ);
+
+    /* Map tls, data, bss and other sections as read/write */
+    _map_region(__ECTORS, __END, PAGE_RW);
+
+    /* Map the rest of the address space (heap and stack) as read/write */
     _map_region(__END, PLATFORM_MAX_MEM_ADDR, PAGE_RW);
 
-    /* TODO: _memset the remaining pte's in L0 to PAGE_INVALID (is it really necessary though?) */
+    /* TODO: memset the remaining pte's in L0 to PAGE_INVALID (is it really necessary though?) */
 }
 

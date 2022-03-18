@@ -4,13 +4,6 @@
  *
  * TODO: Copyright notice
  *
- * EXTRACT_BYTE, CPU_TO_FDT32 and FDT_MAGIC macros are taken from libfdt:
- * Copyright (C) 2006 David Gibson, IBM Corporation.
- * Copyright 2012 Kim Phillips, Freescale Semiconductor.
- *
- * memmove is taken from nolibc:
- * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
- * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,53 +36,53 @@
 #include <uk/arch/types.h>
 #include <uk/plat/common/sections.h>
 #include <uk/essentials.h>
-
-#define _EXTRACT_BYTE(x, n)	((__u32)((__u8 *)(x))[n])
-#define _CPU_TO_FDT32(x) ((_EXTRACT_BYTE(x, 0) << 24) | (_EXTRACT_BYTE(x, 1) << 16) | \
-			 (_EXTRACT_BYTE(x, 2) << 8) | _EXTRACT_BYTE(x, 3))
-#define _FDT_MAGIC	0xd00dfeed
+#include <uk/plat/bootstrap.h>
+#include <uk/print.h>
+#include <kvm/config.h>
+#include <libfdt.h>
+#include <uart/ns16550.h>
+#include <string.h>
 
 extern void _setup_pagetables(void*);
 extern void _start_mmu(void);
 
+struct kvmplat_config _libkvmplat_cfg = { 0 };
 
-/* Placeholder until we port nolibc */
-void *__memmove(void *dst, const void *src, unsigned int len)
+/* Placeholder until we implement hart stop/reset */
+void ukplat_terminate(enum ukplat_gstate request __unused)
 {
-	__u8 *d = dst;
-	const __u8 *s = src;
 
-	if (src > dst) {
-		for (; len > 0; --len)
-			*(d++) = *(s++);
-	} else {
-		s += len - 1;
-		d += len - 1;
-
-		for (; len > 0; --len)
-			*(d--) = *(s--);
-	}
-
-	return dst;
 }
 
-void _libkvmplat_start(void *opaque, void *dtb_pointer)
+static void _init_dtb(void *dtb_pointer)
 {
-    __u32 dtb_magic, dtb_size;
+	int ret, dtb_size;
+
+	if ((ret = fdt_check_header(dtb_pointer)))
+		UK_CRASH("Invalid DTB: %s\n", fdt_strerror(ret));
+
+	uk_pr_info("Found device tree at: %p\n", dtb_pointer);
+
+	/* Move the DTB at the end of the kernel image */
+	dtb_size = fdt_totalsize(dtb_pointer);
+	_libkvmplat_cfg.dtb = memmove((void *) __END, dtb_pointer, dtb_size);
+}
+
+
+void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
+{
     void *pagetables_start_addr;
 
-    dtb_magic = _CPU_TO_FDT32(dtb_pointer);
-    if (dtb_magic != _FDT_MAGIC)
-        return; /* invalid DTB, UK_CRASH? */
+	_init_dtb(dtb_pointer);
 
-    dtb_size = _CPU_TO_FDT32((__u32 *) dtb_pointer + 1);
-
-    /* Move the DTB at the end of the kernel image */
-    __memmove((void *) __END, dtb_pointer, dtb_size);
-
-    /* Setup the page tables at the end of the DTB */
-    pagetables_start_addr = (void *) ALIGN_UP(__END + dtb_size, __PAGE_SIZE);
+    /* Setup the page tables at the end of the DTB and start the MMU */
+	/* TODO: Using the DTB, find how much memory is available before creating the page tables */
+    pagetables_start_addr = (void *) ALIGN_UP(__END + fdt_totalsize(_libkvmplat_cfg.dtb), __PAGE_SIZE);
     _setup_pagetables(pagetables_start_addr);
-
 	_start_mmu();
+
+	/* Setup the NS16550 serial UART */
+	ns16550_console_init(_libkvmplat_cfg.dtb);
+
+	uk_pr_debug("Hello?\n");
 }
