@@ -3,12 +3,19 @@
 ##
 $(eval $(call addplat_s,kvm,$(CONFIG_PLAT_KVM)))
 
+
+##
+## Architecture library definitions for riscv64
+##
 ifeq ($(CONFIG_ARCH_RISCV_64),y)
 $(eval $(call addplatlib,kvm,libkvmplat))
 UK_PLAT_KVM_DEF_LDS            := $(CONFIG_UK_BASE)/plat/kvm/riscv/link64.lds.S
 
-LIBKVMPLAT_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBKVMPLAT_ASINCLUDES-y        += -I$(LIBKVMPLAT_BASE)/include
 LIBKVMPLAT_ASINCLUDES-y        += -I$(UK_PLAT_COMMON_BASE)/include
+LIBKVMPLAT_CINCLUDES-y         += -I$(LIBKVMPLAT_BASE)/include
+LIBKVMPLAT_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBKVMPLAT_CINCLUDES-y         += -I$(UK_PLAT_DRIVERS_BASE)/include
 
 LIBKVMPLAT_ASFLAGS             += -DKVMPLAT
 LIBKVMPLAT_CFLAGS              += -DKVMPLAT
@@ -17,6 +24,11 @@ LIBKVMPLAT_CXXFLAGS            += -DKVMPLAT
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/entry64.S
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/setup_paging.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/setup.c
+
+ifeq ($(findstring y,$(CONFIG_KVM_KERNEL_SERIAL_CONSOLE) $(CONFIG_KVM_DEBUG_SERIAL_CONSOLE)),y)
+LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_DRIVERS_BASE)/uart/ns16550.c
+endif
+
 LIBKVMPLAT_SRCS-y              += $(UK_PLAT_KVM_DEF_LDS)
 else
 ##
