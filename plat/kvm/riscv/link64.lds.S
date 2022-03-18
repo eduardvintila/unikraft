@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
- *			Eduard Vintila <eduard.vintila47@gmail.com>
+ *		    Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
  * TODO: Copyright notice
@@ -67,8 +67,6 @@ SECTIONS {
 		*(.rodata)
 		*(.rodata.*)
 	}
-
-
 	_erodata = .;
 
 	/* Constructor tables (read-only) */
@@ -87,8 +85,9 @@ SECTIONS {
 		KEEP (*(.init_array .ctors))
 		PROVIDE_HIDDEN (__init_array_end = .);
 	}
-	_ectors = .;
 	. = ALIGN(__PAGE_SIZE);
+	_ectors = .;
+
 
 	TLS_SECTIONS
 
@@ -99,8 +98,8 @@ SECTIONS {
 		*(.data)
 		*(.data.*)
 	}
-	_edata = .;
 	. = ALIGN(__PAGE_SIZE);
+	_edata = .;
 
 	__bss_start = .;
 	/* Read-write data that is not initialized explicitly in code */
