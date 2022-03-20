@@ -178,8 +178,10 @@ void _start_mmu(void)
  *
  * We identity map all addresses such that VA=PA. We also map at most 1GiB of space
  * from the start of the kernel image for the moment.
+ *
+ * Returns the size of the pagetables.
  */
-void _setup_pagetables(void *start)
+__u64 _setup_pagetables(void *start)
 {
     /* memset(__BSS_START, 0, __END - __BSS_START); */
 
@@ -217,8 +219,12 @@ void _setup_pagetables(void *start)
     _map_region(__ECTORS, __END, PAGE_RW);
 
     /* Map the rest of the address space (heap and stack) as read/write */
+    /* TODO: Change PLATFORM_MAX_MEM_ADDR to dtb ram max_addr */
     _map_region(__END, PLATFORM_MAX_MEM_ADDR, PAGE_RW);
 
     /* TODO: memset the remaining pte's in L0 to PAGE_INVALID (is it really necessary though?) */
+
+    /* Size of L2, L1 and L0 tables */
+    return (2 + _l0_pagetables_cnt) * PAGETABLE_ENTRIES * sizeof(__pte);
 }
 

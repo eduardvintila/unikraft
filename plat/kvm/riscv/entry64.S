@@ -37,7 +37,8 @@
 
 .section .bss
 .space 4096
-bootstack: /* TODO: Check stack alignment? */
+bootstack:
+.balign __STACK_ALIGN_SIZE
 
 .section .text
 ENTRY(_libkvmplat_entry)
