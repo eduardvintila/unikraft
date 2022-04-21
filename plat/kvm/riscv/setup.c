@@ -43,9 +43,11 @@
 #include <libfdt.h>
 #include <uart/ns16550.h>
 #include <string.h>
+#include <riscv/sbi.h>
 
 extern __u64 _setup_pagetables(void*);
 extern void _start_mmu(void);
+extern void _init_traps(void);
 
 struct kvmplat_config _libkvmplat_cfg = { 0 };
 
@@ -55,7 +57,7 @@ static char cmdline[MAX_CMDLINE_SIZE];
 /* Placeholder until we implement hart stop/reset */
 void ukplat_terminate(enum ukplat_gstate request __unused)
 {
-
+	sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN, SBI_SRST_RESET_REASON_SYSFAIL);
 }
 
 static void _init_dtb(void *dtb_pointer)
@@ -202,6 +204,8 @@ void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 	_dtb_get_cmdline(cmdline, sizeof(cmdline));
 
 	_init_dtb_mem();
+
+	_init_traps();
 
 	uk_pr_info("pagetable start: %p\n",
 		   (void *) _libkvmplat_cfg.pagetable.start);
