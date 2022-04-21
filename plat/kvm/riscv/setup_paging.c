@@ -53,16 +53,16 @@
 #define PAGE_VALID_LINK (PAGE_VALID | PAGE_LINK)
 
 /* Used in setting x's physical page number (PPN) in a page table entry. *x* must be page-aligned */
-#define PAGE_PPN(x)     (((__phys_addr)(x)) >> 2)
+#define PAGE_PPN(x)     (((__paddr_t)(x)) >> 2)
 
 /* Obtain the physical address stored in the page table entry *x* */
-#define PAGE_PPN_TO_ADDR(x) ((void *)(((__phys_addr)(x) >> 10) << __PAGE_SHIFT))
+#define PAGE_PPN_TO_ADDR(x) ((void *)(((__paddr_t)(x) >> 10) << __PAGE_SHIFT))
 
 /* Get x's PPN */
-#define PPN(x) ((__phys_addr)(x) >> __PAGE_SHIFT)
+#define PPN(x) ((__paddr_t)(x) >> __PAGE_SHIFT)
 
-#define VPN0(x)         ((((__phys_addr)(x)) >> __PAGE_SHIFT) & _UL(0x1FF))
-#define VPN1(x)         ((((__phys_addr)(x)) >> (__PAGE_SHIFT + 9)) & _UL(0x1FF))
+#define VPN0(x)         ((((__paddr_t)(x)) >> __PAGE_SHIFT) & _UL(0x1FF))
+#define VPN1(x)         ((((__paddr_t)(x)) >> (__PAGE_SHIFT + 9)) & _UL(0x1FF))
 
 #define SET_SATP64_MODE(mode) ((((__u64)(mode)) << 60) & SATP64_MODE)
 #define SET_SATP64_ASID(asid) ((((__u64)(asid)) << 44) & SATP64_ASID)
@@ -133,10 +133,10 @@ __pte *_get_l0_table(int l1_idx)
  *  Identity map a region with *mode* permission bits.
  *  Addresses *start* and *end* MUST be page-aligned.
  */
-void _map_region(__phys_addr start, __phys_addr end, __u16 mode)
+void _map_region(__paddr_t start, __paddr_t end, __u16 mode)
 {
     int l1_idx = VPN1(start), l0_idx = VPN0(start);
-    __phys_addr addr = start;
+    __paddr_t addr = start;
 
     while (addr < end && l1_idx != 0) {
         if (l0_idx == 0 && (end - addr) >= __MEGAPAGE_SIZE) {
