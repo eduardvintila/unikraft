@@ -10,14 +10,6 @@ menuconfig PLAT_KVM
 
        select LIBNOLIBC if !HAVE_LIBC
 
-=======
-       depends on ((ARCH_X86_64 && !HAVE_SMP) || (ARCH_ARM_64 && !HAVE_SMP && !HAVE_SYSCALL) || ARCH_RISCV_64)
-       select LIBUKDEBUG
-       select LIBUKALLOC
-       select LIBUKTIMECONV if !ARCH_RISCV_64 # Not yet ported to RISC-V
-       select LIBNOLIBC if !HAVE_LIBC
-
->>>>>>> 2005920 (plat/kvm: riscv64: Add UART console init sequence)
        select LIBFDT if (ARCH_ARM_64 || ARCH_RISCV_64)
        help
                 Create a Unikraft image that runs as a KVM guest
