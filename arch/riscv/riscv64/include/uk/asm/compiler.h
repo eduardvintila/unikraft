@@ -1,11 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
- *          Wei Chen <Wei.Chen@arm.com>
- *
- *
- * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) YYYY, Copyright Holder. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,15 +27,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#if ((!defined __UKARCH_TYPES_H__) && (!defined __UKARCH_LIMITS_H__))
+#ifndef __UK_ESSENTIALS_H__
 #error Do not include this header directly
 #endif
 
-#define __C_IS_8    /* char */
-#define __S_IS_16   /* short */
-#define __I_IS_32   /* int */
-#define __L_IS_64   /* long */
-#define __LL_IS_64  /* long long */
-#define __PTR_IS_64 /* void * */
-#define __PADDR_IS_64 /* physical address */
+/* Architecture-specific compiler definitions */
