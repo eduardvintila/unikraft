@@ -59,6 +59,9 @@
 /* Supervisor Protection and Translation */
 #define CSR_SATP			0x180
 
+/* Time counter */
+#define CSR_TIME			0xc01
+
 
 /* IRQs */
 #define IRQ_S_SOFT			1
