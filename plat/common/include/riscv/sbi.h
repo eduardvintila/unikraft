@@ -9,15 +9,29 @@
  */
 
 
+struct sbiret {
+	long error;
+	long value;
+};
+
 /* SBI system reset extension ID */
 #define SBI_EXT_SRST	0x53525354
 
 /* SBI reset function ID */
 #define SBI_EXT_SRST_RESET				0x0
 
+/* Reset type */
 #define SBI_SRST_RESET_TYPE_SHUTDOWN	0x0
+
+/* Reset reason */
 #define SBI_SRST_RESET_REASON_NONE		0x0
 #define SBI_SRST_RESET_REASON_SYSFAIL	0x1
+
+/* SBI time extension ID */
+#define SBI_EXT_TIME				0x54494D45
+
+/* SBI set timer function ID */
+#define SBI_EXT_TIME_SET_TIMER			0x0
 
 #define SBI_ECALL(__eid, __fid, __a0, __a1, __a2)                             \
 	({                                                                    \
@@ -39,3 +53,6 @@
 
 #define sbi_system_reset(reset_type, reset_reason) \
 	SBI_ECALL_2(SBI_EXT_SRST, SBI_EXT_SRST_RESET, reset_type, reset_reason)
+
+#define sbi_set_timer(stime_value) \
+	SBI_ECALL_1(SBI_EXT_TIME, SBI_EXT_TIME_SET_TIMER, stime_value)
