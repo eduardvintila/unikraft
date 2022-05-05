@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Wei Chen <wei.chen@arm.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2018, Arm Ltd., All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdint.h>
+#include <uk/plat/lcpu.h>
+#include <riscv/irq.h>
 
-#ifndef __PLAT_CMN_CPU_H__
-#define __PLAT_CMN_CPU_H__
+void ukplat_lcpu_enable_irq(void)
+{
+	local_irq_enable();
+}
 
-#include <uk/arch/lcpu.h>
-#if defined(__X86_64__)
-#include <x86/cpu.h>
-#elif defined(__ARM_32__) || defined(__ARM_64__)
-#include <arm/cpu.h>
-#elif defined(__RISCV_64__)
-#include <riscv/cpu.h>
-#else
-#error "Add cpu.h for current architecture."
-#endif
+void ukplat_lcpu_disable_irq(void)
+{
+	local_irq_disable();
+}
 
-#define __CPU_HALT()		\
-({				\
-	local_irq_disable();	\
-		for (;;)	\
-			halt();	\
-})
+void ukplat_lcpu_halt_irq(void)
+{
+	ukplat_lcpu_enable_irq();
+	halt();
+	ukplat_lcpu_disable_irq();
+}
 
-#endif /* __PLAT_CMN_CPU_H__ */
+unsigned long ukplat_lcpu_save_irqf(void)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	return flags;
+}
+
+void ukplat_lcpu_restore_irqf(unsigned long flags)
+{
+	local_irq_restore(flags);
+}
+
+int ukplat_lcpu_irqs_disabled(void)
+{
+	return irqs_disabled();
+}
+
+void ukplat_lcpu_irqs_handle_pending(void)
+{
+	// TODO
+}

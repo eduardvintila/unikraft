@@ -2,7 +2,7 @@
 /*
  * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2019, University Politehnica of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,25 +30,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLAT_CMN_CPU_H__
-#define __PLAT_CMN_CPU_H__
+#include <uk/essentials.h>
 
-#include <uk/arch/lcpu.h>
-#if defined(__X86_64__)
-#include <x86/cpu.h>
-#elif defined(__ARM_32__) || defined(__ARM_64__)
-#include <arm/cpu.h>
-#elif defined(__RISCV_64__)
-#include <riscv/cpu.h>
-#else
-#error "Add cpu.h for current architecture."
-#endif
-
-#define __CPU_HALT()		\
-({				\
-	local_irq_disable();	\
-		for (;;)	\
-			halt();	\
-})
-
-#endif /* __PLAT_CMN_CPU_H__ */
+void ukplat_stack_set_current_thread(void *thread_addr __unused)
+{
+}

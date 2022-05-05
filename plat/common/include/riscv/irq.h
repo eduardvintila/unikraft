@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * TODO: Copyright notice.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,52 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef __PLAT_CMN_RISCV64_IRQ_H__
+#define __PLAT_CMN_RISCV64_IRQ_H__
 
-#ifndef __PLAT_CMN_CPU_H__
-#define __PLAT_CMN_CPU_H__
-
-#include <uk/arch/lcpu.h>
-#if defined(__X86_64__)
-#include <x86/cpu.h>
-#elif defined(__ARM_32__) || defined(__ARM_64__)
-#include <arm/cpu.h>
-#elif defined(__RISCV_64__)
 #include <riscv/cpu.h>
-#else
-#error "Add cpu.h for current architecture."
-#endif
+#include <riscv/cpu_defs.h>
 
-#define __CPU_HALT()		\
-({				\
-	local_irq_disable();	\
-		for (;;)	\
-			halt();	\
+#define __set_sie()     _csr_set(CSR_SSTATUS, SSTATUS_SIE)
+
+#define __clear_sie()   _csr_clear(CSR_SSTATUS, SSTATUS_SIE)
+
+#define __save_flags(x) \
+({ \
+		unsigned long __f; \
+		__f = _csr_read(CSR_SSTATUS); \
+		x = (__f & SSTATUS_SIE) ? 1 : 0; \
 })
 
-#endif /* __PLAT_CMN_CPU_H__ */
+#define __restore_flags(x) \
+({ \
+		if (x) \
+			__set_sie(); \
+		else \
+			__clear_sie(); \
+})
+
+#define __save_and_clear_sie(x) \
+({ \
+	__save_flags(x); \
+	__clear_sie(); \
+})
+
+static inline int irqs_disabled(void)
+{
+	int flag;
+
+	__save_flags(flag);
+	return !flag;
+}
+
+#define local_irq_save(x)     __save_and_clear_sie(x)
+#define local_irq_restore(x)  __restore_flags(x)
+#define local_save_flags(x)   __save_flags(x)
+#define local_irq_disable()	__clear_sie()
+#define local_irq_enable()	   __set_sie()
+
+
+#define __MAX_IRQ	1024
+
+#endif /* __PLAT_CMN_RISCV64_IRQ_H__ */

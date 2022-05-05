@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * TODO: Copyright notice
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,18 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef __PLAT_COMMON_RISCV64_PLIC_H__
+#define __PLAT_COMMON_RISCV64_PLIC_H__
+#include <uk/arch/types.h>
+#include <uk/plat/irq.h>
 
-#ifndef __PLAT_CMN_CPU_H__
-#define __PLAT_CMN_CPU_H__
+int init_plic(void *dtb);
+void plic_enable_irq(unsigned int irq);
+void plic_disable_irq(unsigned int irq);
+void plic_set_priority(unsigned int irq, __u32 priority);
+void plic_set_priority_threshold(__u32 threshold);
+unsigned int plic_claim(void);
+void plic_complete(unsigned int irq);
+void plic_handle_irq(void);
 
-#include <uk/arch/lcpu.h>
-#if defined(__X86_64__)
-#include <x86/cpu.h>
-#elif defined(__ARM_32__) || defined(__ARM_64__)
-#include <arm/cpu.h>
-#elif defined(__RISCV_64__)
-#include <riscv/cpu.h>
-#else
-#error "Add cpu.h for current architecture."
 #endif
-
-#define __CPU_HALT()		\
-({				\
-	local_irq_disable();	\
-		for (;;)	\
-			halt();	\
-})
-
-#endif /* __PLAT_CMN_CPU_H__ */

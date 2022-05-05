@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * TODO: Copyright notice
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef __PLAT_CMN_CPU_H__
-#define __PLAT_CMN_CPU_H__
-
-#include <uk/arch/lcpu.h>
-#if defined(__X86_64__)
-#include <x86/cpu.h>
-#elif defined(__ARM_32__) || defined(__ARM_64__)
-#include <arm/cpu.h>
-#elif defined(__RISCV_64__)
+#include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
-#else
-#error "Add cpu.h for current architecture."
-#endif
+#include <riscv/plic.h>
+#include <kvm/config.h>
+#include <uk/assert.h>
 
-#define __CPU_HALT()		\
-({				\
-	local_irq_disable();	\
-		for (;;)	\
-			halt();	\
-})
+void intctrl_clear_irq(unsigned int irq)
+{
+    /*
+     * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't exist.
+     * We use IRQ 0 as an internal convention for timer interrupts. Those are manipulated through Control Status Registers,
+     * not the PLIC, hence timer interrupts are not treated as external interrupts.
+     */
+    if (irq == 0)
+        /*
+         * Sets the enable supervisor timer interrupt bit.
+         * A timer interrupt actually fires only when a timer event has been scheduled via SBI,
+         * which in turn uses machine mode specific CSRs (such as mtimecmp) to program a timer alarm.
+         */
+        _csr_set(CSR_SIE, SIP_STIP);
+    else
+        plic_enable_irq(irq);
+}
 
-#endif /* __PLAT_CMN_CPU_H__ */
+void intctrl_mask_irq(unsigned int irq)
+{
+    plic_disable_irq(irq);
+}
+
+void intctrl_ack_irq(unsigned int irq)
+{
+    plic_complete(irq);
+}
+
+void intctrl_init(void)
+{
+    int rc;
+
+    rc = init_plic(_libkvmplat_cfg.dtb);
+    if (rc < 0)
+        UK_CRASH("Interrupt controller not found, crashing...\n");
+
+    _csr_set(CSR_SIE, SIP_SEIP); // Enable external interrupts
+}
