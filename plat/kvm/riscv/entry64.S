@@ -72,6 +72,12 @@ ENTRY(__start_mmu)
 END(__start_mmu)
 
 ENTRY(_libkvmplat_newstack)
-	wfi
-    j _libkvmplat_newstack
+	/* Switch to the new stack */
+	mv sp, a0
+
+	/* Load argument for the next function */
+	mv a0, a2
+
+	/* Jump to the next function */
+	jr a1
 END(_libkvmplat_newstack)
