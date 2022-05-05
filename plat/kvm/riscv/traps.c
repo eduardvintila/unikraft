@@ -37,8 +37,10 @@
 #include <uk/assert.h>
 #include <uk/print.h>
 #include <kvm/config.h>
+#include <kvm/irq.h>
 #include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
+#include <riscv/plic.h>
 
 extern void __trap_handler(void);
 
@@ -51,7 +53,7 @@ void do_unknown_exception(struct __regs *regs, unsigned long scause)
     UK_CRASH("Crashing...\n");
 }
 
-void do_page_fault(struct __regs *regs, unsigned long scause)
+void do_page_fault(struct __regs *regs, unsigned long scause __unused)
 {
     unsigned long stval = _csr_read(CSR_STVAL);
     uk_pr_crit("Page fault at address 0x%lx, stval: 0x%lx, sp: 0x%lx, "
@@ -65,9 +67,15 @@ void _trap_handler(struct __regs *regs)
 {
     unsigned long scause = _csr_read(CSR_SCAUSE);
     if (scause & CAUSE_INTERRUPT){
-        uk_pr_info("Interrupt!\n");
+        if (scause == (CAUSE_INTERRUPT | IRQ_S_EXT))
+            plic_handle_irq();
+        else if (scause == (CAUSE_INTERRUPT | IRQ_S_TIMER))
+            /* Timer interrupts are not routed through the PLIC, so call _ukplat_irq_handle directly. */
+            _ukplat_irq_handle(0);
+        else
+            /* Software interrupt */
+            do_unknown_exception(regs, scause);
     } else {
-        uk_pr_info("Exception!\n");
         if (scause == CAUSE_LOAD_PAGE_FAULT || scause == CAUSE_STORE_PAGE_FAULT || scause == CAUSE_FETCH_PAGE_FAULT)
             do_page_fault(regs, scause);
         else
@@ -80,18 +88,12 @@ void _trap_handler(struct __regs *regs)
 
 void _init_traps(void)
 {
-    uintptr_t addr = (uintptr_t) &__trap_handler;
+    uintptr_t handler = (uintptr_t) &__trap_handler;
     uk_pr_info("sscratch: 0x%lx\n", _csr_read(CSR_SSCRATCH));
     uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
     uk_pr_info("sip: 0x%lx\n", _csr_read(CSR_SIP));
     uk_pr_info("sie: 0x%lx\n", _csr_read(CSR_SIE));
     uk_pr_info("sstatus: 0x%lx\n", _csr_read(CSR_SSTATUS));
-    _csr_write(CSR_STVEC, addr);
+    _csr_write(CSR_STVEC, handler);
     uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
-    _csr_set(CSR_SIE, SIP_STIP); // Enable supervisor timer interrupt
-    _csr_set(CSR_SSTATUS, SSTATUS_SIE); // Enable interrupts
-    uk_pr_info("sie after enabling interrupts: 0x%lx\n", _csr_read(CSR_SIE));
-    uk_pr_info("sstatus after enabling interrupts: 0x%lx\n", _csr_read(CSR_SSTATUS));
-    uk_pr_info("sip after enabling interrupts: 0x%lx\n", _csr_read(CSR_SIP));
-    *(__u64 *)addr = 0x0; /* Should raise a page fault exception */
 }

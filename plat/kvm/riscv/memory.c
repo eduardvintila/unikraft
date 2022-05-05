@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
+ * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
  *
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) 2019, University Politehnica of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,35 +30,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLAT_CMN_IRQ_H__
-#define __PLAT_CMN_IRQ_H__
+#include <uk/essentials.h>
 
-#include <uk/plat/irq.h>
-
-#if defined(__X86_64__)
-#include <x86/irq.h>
-#elif defined(__ARM_64__)
-#include <arm/irq.h>
-#elif defined(__RISCV_64__)
-#include <riscv/irq.h>
-#else
-#error "Add irq.h for current architecture."
-#endif
-
-/* define IRQ trigger types */
-enum uk_irq_trigger {
-	UK_IRQ_TRIGGER_NONE = 0,
-	UK_IRQ_TRIGGER_EDGE = 1,
-	UK_IRQ_TRIGGER_LEVEL = 2,
-	UK_IRQ_TRIGGER_MAX
-};
-
-/* define IRQ trigger polarities */
-enum uk_irq_polarity {
-	UK_IRQ_POLARITY_NONE = 0,
-	UK_IRQ_POLARITY_HIGH = 1,
-	UK_IRQ_POLARITY_LOW = 2,
-	UK_IRQ_POLARITY_MAX
-};
-
-#endif /* __PLAT_CMN_IRQ_H__ */
+void ukplat_stack_set_current_thread(void *thread_addr __unused)
+{
+}

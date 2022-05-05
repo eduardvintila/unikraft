@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * TODO: Copyright notice
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,36 +29,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <uk/config.h>
+#include <uk/plat/common/cpu.h>
+#include <riscv/sbi.h>
+#include <uk/assert.h>
 
-#ifndef __PLAT_CMN_IRQ_H__
-#define __PLAT_CMN_IRQ_H__
+void halt(void)
+{
+	/* TODO: Warning, wfi could be implemented as a NOP */
+    __asm__ __volatile__("wfi");
+}
 
-#include <uk/plat/irq.h>
+void system_off(void)
+{
+    /* Shutdown the system using an SBI call */
+    sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN, SBI_SRST_RESET_REASON_NONE);
+}
 
-#if defined(__X86_64__)
-#include <x86/irq.h>
-#elif defined(__ARM_64__)
-#include <arm/irq.h>
-#elif defined(__RISCV_64__)
-#include <riscv/irq.h>
-#else
-#error "Add irq.h for current architecture."
-#endif
 
-/* define IRQ trigger types */
-enum uk_irq_trigger {
-	UK_IRQ_TRIGGER_NONE = 0,
-	UK_IRQ_TRIGGER_EDGE = 1,
-	UK_IRQ_TRIGGER_LEVEL = 2,
-	UK_IRQ_TRIGGER_MAX
-};
 
-/* define IRQ trigger polarities */
-enum uk_irq_polarity {
-	UK_IRQ_POLARITY_NONE = 0,
-	UK_IRQ_POLARITY_HIGH = 1,
-	UK_IRQ_POLARITY_LOW = 2,
-	UK_IRQ_POLARITY_MAX
-};
-
-#endif /* __PLAT_CMN_IRQ_H__ */
