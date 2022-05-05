@@ -64,4 +64,17 @@ struct __regs {
     /* Padding for achieving 16-byte structure alignment */
     unsigned long pad;
 };
+
+static inline unsigned long ukarch_read_sp(void)
+{
+	unsigned long sp;
+
+	__asm__ __volatile (
+        "mv %0, sp"
+        : "=&r"(sp)
+    );
+
+	return sp;
+}
+
 #endif
