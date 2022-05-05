@@ -44,6 +44,9 @@
 #include <uart/ns16550.h>
 #include <string.h>
 #include <riscv/sbi.h>
+#include <uk/plat/time.h>
+#include <kvm/intctrl.h>
+#include <stdio.h>
 
 extern __u64 _setup_pagetables(void*);
 extern void _start_mmu(void);
@@ -53,12 +56,10 @@ struct kvmplat_config _libkvmplat_cfg = { 0 };
 
 #define MAX_CMDLINE_SIZE 1024
 static char cmdline[MAX_CMDLINE_SIZE];
+static const char *appname = CONFIG_UK_NAME;
 
-/* Placeholder until we implement hart stop/reset */
-void ukplat_terminate(enum ukplat_gstate request __unused)
-{
-	sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN, SBI_SRST_RESET_REASON_SYSFAIL);
-}
+extern void _libkvmplat_newstack(uint64_t stack_start,
+			void (*tramp)(void *), void *arg);
 
 static void _init_dtb(void *dtb_pointer)
 {
@@ -183,6 +184,12 @@ static void _init_dtb_mem(void)
 		UK_CRASH("Not enough memory, giving up...\n");
 }
 
+static void _libkvmplat_entry2(void *arg __attribute__((unused)))
+{
+	ukplat_entry_argp(DECONST(char *, appname),
+			  (char *)cmdline, strlen(cmdline));
+}
+
 
 void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 {
@@ -207,10 +214,16 @@ void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 
 	_init_traps();
 
+	intctrl_init();
+
 	uk_pr_info("pagetable start: %p\n",
 		   (void *) _libkvmplat_cfg.pagetable.start);
 	uk_pr_info("     heap start: %p\n",
 		   (void *) _libkvmplat_cfg.heap.start);
 	uk_pr_info("      stack top: %p\n",
 		   (void *) _libkvmplat_cfg.bstack.start);
+
+	_libkvmplat_newstack((uint64_t) _libkvmplat_cfg.bstack.end,
+				_libkvmplat_entry2, NULL);
+
 }

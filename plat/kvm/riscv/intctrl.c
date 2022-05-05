@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * TODO: Copyright notice
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,36 +29,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <riscv/cpu_defs.h>
+#include <riscv/cpu.h>
+#include <riscv/plic.h>
+#include <kvm/config.h>
+#include <uk/assert.h>
 
-#ifndef __PLAT_CMN_IRQ_H__
-#define __PLAT_CMN_IRQ_H__
+void intctrl_clear_irq(unsigned int irq)
+{
+    /*
+     * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't exist.
+     * We use IRQ 0 as an internal convention for timer interrupts. Those are manipulated through Control Status Registers,
+     * not the PLIC, hence timer interrupts are not treated as external interrupts.
+     */
+    if (irq == 0)
+        /*
+         * Sets the enable supervisor timer interrupt bit.
+         * A timer interrupt actually fires only when a timer event has been scheduled via SBI,
+         * which in turn uses machine mode specific CSRs (such as mtimecmp) to program a timer alarm.
+         */
+        _csr_set(CSR_SIE, SIP_STIP);
+    else
+        plic_enable_irq(irq);
+}
 
-#include <uk/plat/irq.h>
+void intctrl_mask_irq(unsigned int irq)
+{
+    plic_disable_irq(irq);
+}
 
-#if defined(__X86_64__)
-#include <x86/irq.h>
-#elif defined(__ARM_64__)
-#include <arm/irq.h>
-#elif defined(__RISCV_64__)
-#include <riscv/irq.h>
-#else
-#error "Add irq.h for current architecture."
-#endif
+void intctrl_ack_irq(unsigned int irq)
+{
+    plic_complete(irq);
+}
 
-/* define IRQ trigger types */
-enum uk_irq_trigger {
-	UK_IRQ_TRIGGER_NONE = 0,
-	UK_IRQ_TRIGGER_EDGE = 1,
-	UK_IRQ_TRIGGER_LEVEL = 2,
-	UK_IRQ_TRIGGER_MAX
-};
+void intctrl_init(void)
+{
+    int rc;
 
-/* define IRQ trigger polarities */
-enum uk_irq_polarity {
-	UK_IRQ_POLARITY_NONE = 0,
-	UK_IRQ_POLARITY_HIGH = 1,
-	UK_IRQ_POLARITY_LOW = 2,
-	UK_IRQ_POLARITY_MAX
-};
+    rc = init_plic(_libkvmplat_cfg.dtb);
+    if (rc < 0)
+        UK_CRASH("Interrupt controller not found, crashing...\n");
 
-#endif /* __PLAT_CMN_IRQ_H__ */
+    _csr_set(CSR_SIE, SIP_SEIP); // Enable external interrupts
+}
