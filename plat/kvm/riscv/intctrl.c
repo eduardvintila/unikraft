@@ -32,6 +32,7 @@
 #include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
 #include <riscv/plic.h>
+#include <riscv/sbi.h>
 #include <kvm/config.h>
 #include <uk/assert.h>
 
@@ -42,25 +43,39 @@ void intctrl_clear_irq(unsigned int irq)
      * We use IRQ 0 as an internal convention for timer interrupts. Those are manipulated through Control Status Registers,
      * not the PLIC, hence timer interrupts are not treated as external interrupts.
      */
-    if (irq == 0)
+    if (irq)
+        plic_enable_irq(irq);
+    else
         /*
          * Sets the enable supervisor timer interrupt bit.
          * A timer interrupt actually fires only when a timer event has been scheduled via SBI,
          * which in turn uses machine mode specific CSRs (such as mtimecmp) to program a timer alarm.
          */
         _csr_set(CSR_SIE, SIP_STIP);
-    else
-        plic_enable_irq(irq);
 }
 
 void intctrl_mask_irq(unsigned int irq)
 {
-    plic_disable_irq(irq);
+    if (irq)
+        plic_disable_irq(irq);
+    else
+        _csr_clear(CSR_SIE, SIP_STIP);
 }
 
 void intctrl_ack_irq(unsigned int irq)
 {
-    plic_complete(irq);
+    if (irq)
+        plic_complete(irq);
+	else
+        /*
+         * From the RISC-V SBI spec: "If the supervisor wishes to clear the timer interrupt
+         * without scheduling the next timer event, it can request a timer interrupt infinitely
+         * far into the future (i.e., (uint64_t)-1)."
+         *
+         * Essentialy this is used to clear the timer interrupt pending bit to mark that the
+         * interrupt has been acknowledged.
+         */
+		sbi_set_timer((__u64) -1);
 }
 
 void intctrl_init(void)

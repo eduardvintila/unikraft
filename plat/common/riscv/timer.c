@@ -59,6 +59,7 @@
 #include <riscv/sbi.h>
 #include <uk/arch/time.h>
 #include <uk/plat/lcpu.h>
+#include <uk/assert.h>
 #include <uk/print.h>
 #include <rtc/rtc.h>
 #include <libfdt.h>
@@ -139,7 +140,7 @@ void timer_cpu_block_until(__nsec until)
     now_ns = ticks_to_ns(now_ticks);
     if (now_ns < until) {
         delta_ticks = ns_to_ticks(until - now_ns);
-        until_ticks = ticks_to_ns(now_ticks + delta_ticks);
+        until_ticks = now_ticks + delta_ticks;
 
         /* Set the time alarm through SBI */
         sbi_set_timer(until_ticks);
