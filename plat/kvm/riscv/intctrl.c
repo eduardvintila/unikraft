@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,53 +38,56 @@
 
 void intctrl_clear_irq(unsigned int irq)
 {
-    /*
-     * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't exist.
-     * We use IRQ 0 as an internal convention for timer interrupts. Those are manipulated through Control Status Registers,
-     * not the PLIC, hence timer interrupts are not treated as external interrupts.
-     */
-    if (irq)
-        plic_enable_irq(irq);
-    else
-        /*
-         * Sets the enable supervisor timer interrupt bit.
-         * A timer interrupt actually fires only when a timer event has been scheduled via SBI,
-         * which in turn uses machine mode specific CSRs (such as mtimecmp) to program a timer alarm.
-         */
-        _csr_set(CSR_SIE, SIP_STIP);
+	/*
+	 * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't
+	 * exist. We use IRQ 0 as an internal convention for timer interrupts.
+	 * Those are manipulated through Control Status Registers, not the PLIC,
+	 * hence timer interrupts are not treated as external interrupts.
+	 */
+	if (irq)
+		plic_enable_irq(irq);
+	else
+		/*
+		 * Sets the enable supervisor timer interrupt bit.
+		 * A timer interrupt actually fires only when a timer event has
+		 * been scheduled via SBI, which in turn uses machine mode
+		 * specific CSRs (such as mtimecmp) to program a timer alarm.
+		 */
+		_csr_set(CSR_SIE, SIP_STIP);
 }
 
 void intctrl_mask_irq(unsigned int irq)
 {
-    if (irq)
-        plic_disable_irq(irq);
-    else
-        _csr_clear(CSR_SIE, SIP_STIP);
+	if (irq)
+		plic_disable_irq(irq);
+	else
+		_csr_clear(CSR_SIE, SIP_STIP);
 }
 
 void intctrl_ack_irq(unsigned int irq)
 {
-    if (irq)
-        plic_complete(irq);
+	if (irq)
+		plic_complete(irq);
 	else
-        /*
-         * From the RISC-V SBI spec: "If the supervisor wishes to clear the timer interrupt
-         * without scheduling the next timer event, it can request a timer interrupt infinitely
-         * far into the future (i.e., (uint64_t)-1)."
-         *
-         * Essentialy this is used to clear the timer interrupt pending bit to mark that the
-         * interrupt has been acknowledged.
-         */
-		sbi_set_timer((__u64) -1);
+		/*
+		 * From the RISC-V SBI spec: "If the supervisor wishes to clear
+		 * the timer interrupt without scheduling the next timer event,
+		 * it can request a timer interrupt infinitely far into the
+		 * future (i.e., (uint64_t)-1)."
+		 *
+		 * Essentialy this is used to clear the timer interrupt pending
+		 * bit to mark that the interrupt has been acknowledged.
+		 */
+		sbi_set_timer((__u64)-1);
 }
 
 void intctrl_init(void)
 {
-    int rc;
+	int rc;
 
-    rc = init_plic(_libkvmplat_cfg.dtb);
-    if (rc < 0)
-        UK_CRASH("Interrupt controller not found, crashing...\n");
+	rc = init_plic(_libkvmplat_cfg.dtb);
+	if (rc < 0)
+		UK_CRASH("Interrupt controller not found, crashing...\n");
 
-    _csr_set(CSR_SIE, SIP_SEIP); // Enable external interrupts
+	_csr_set(CSR_SIE, SIP_SEIP); // Enable external interrupts
 }

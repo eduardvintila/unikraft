@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,54 +46,61 @@ extern void __trap_handler(void);
 
 void do_unknown_exception(struct __regs *regs, unsigned long scause)
 {
-    uk_pr_crit("Unknown exception, scause: %lu, pc: %lx, sp: %lx, fp: %lx\n",
-        scause, regs->pc, regs->sp, regs->s[0]);
+	uk_pr_crit(
+	    "Unknown exception, scause: %lu, pc: %lx, sp: %lx, fp: %lx\n",
+	    scause, regs->pc, regs->sp, regs->s[0]);
 
-    /* TODO: dump regs and mem */
-    UK_CRASH("Crashing...\n");
+	/* TODO: dump regs and mem */
+	UK_CRASH("Crashing...\n");
 }
 
 void do_page_fault(struct __regs *regs, unsigned long scause __unused)
 {
-    unsigned long stval = _csr_read(CSR_STVAL);
-    uk_pr_crit("Page fault at address 0x%lx, stval: 0x%lx, sp: 0x%lx, "
-     "fp: 0x%lx\n", regs->pc, stval, regs->sp, regs->s[0]);
+	unsigned long stval = _csr_read(CSR_STVAL);
 
-    /* TODO: dump regs and mem */
-    UK_CRASH("Crashing...\n");
+	uk_pr_crit("Page fault at address 0x%lx, stval: 0x%lx, sp: 0x%lx, "
+		   "fp: 0x%lx\n",
+		   regs->pc, stval, regs->sp, regs->s[0]);
+
+	/* TODO: dump regs and mem */
+	UK_CRASH("Crashing...\n");
 }
 
 void _trap_handler(struct __regs *regs)
 {
-    unsigned long scause = _csr_read(CSR_SCAUSE);
-    if (scause & CAUSE_INTERRUPT){
-        if (scause == (CAUSE_INTERRUPT | IRQ_S_EXT))
-            plic_handle_irq();
-        else if (scause == (CAUSE_INTERRUPT | IRQ_S_TIMER))
-            /* Timer interrupts are not routed through the PLIC, so call _ukplat_irq_handle directly. */
-            _ukplat_irq_handle(0);
-        else
-            /* Software interrupt */
-            do_unknown_exception(regs, scause);
-    } else {
-        if (scause == CAUSE_LOAD_PAGE_FAULT || scause == CAUSE_STORE_PAGE_FAULT || scause == CAUSE_FETCH_PAGE_FAULT)
-            do_page_fault(regs, scause);
-        else
-            do_unknown_exception(regs, scause);
-    }
-    /* uintptr_t sepc = _csr_read(CSR_SEPC);
-    sepc += 4;
-    _csr_write(CSR_SEPC, sepc); */
+	unsigned long scause = _csr_read(CSR_SCAUSE);
+
+	if (scause & CAUSE_INTERRUPT) {
+		if (scause == (CAUSE_INTERRUPT | IRQ_S_EXT))
+			plic_handle_irq();
+		else if (scause == (CAUSE_INTERRUPT | IRQ_S_TIMER))
+			/*
+			 * Timer interrupts are not routed through the PLIC, so
+			 * call _ukplat_irq_handle directly.
+			 */
+			_ukplat_irq_handle(0);
+		else
+			/* Software interrupt */
+			do_unknown_exception(regs, scause);
+	} else {
+		if (scause == CAUSE_LOAD_PAGE_FAULT
+		    || scause == CAUSE_STORE_PAGE_FAULT
+		    || scause == CAUSE_FETCH_PAGE_FAULT)
+			do_page_fault(regs, scause);
+		else
+			do_unknown_exception(regs, scause);
+	}
 }
 
 void _init_traps(void)
 {
-    uintptr_t handler = (uintptr_t) &__trap_handler;
-    uk_pr_info("sscratch: 0x%lx\n", _csr_read(CSR_SSCRATCH));
-    uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
-    uk_pr_info("sip: 0x%lx\n", _csr_read(CSR_SIP));
-    uk_pr_info("sie: 0x%lx\n", _csr_read(CSR_SIE));
-    uk_pr_info("sstatus: 0x%lx\n", _csr_read(CSR_SSTATUS));
-    _csr_write(CSR_STVEC, handler);
-    uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
+	uintptr_t handler = (uintptr_t)&__trap_handler;
+
+	_csr_write(CSR_STVEC, handler);
+
+	uk_pr_info("sscratch: 0x%lx\n", _csr_read(CSR_SSCRATCH));
+	uk_pr_info("sip: 0x%lx\n", _csr_read(CSR_SIP));
+	uk_pr_info("sie: 0x%lx\n", _csr_read(CSR_SIE));
+	uk_pr_info("sstatus: 0x%lx\n", _csr_read(CSR_SSTATUS));
+	uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
 }
