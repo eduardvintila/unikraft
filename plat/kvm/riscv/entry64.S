@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,8 +49,6 @@ ENTRY(_libkvmplat_entry)
 	 */
 	bnez a0, 2f
 
-	/* TODO: Linker relaxation using the gp (global pointer) register. */
-
 	/* Setup the temporary bootstack */
 	la sp, bootstack
 
@@ -66,7 +64,7 @@ ENTRY(__start_mmu)
 	/* Enable paging */
 	csrw satp, a0
 	/* Flush the MMU cache */
-    sfence.vma x0, x0
+	sfence.vma x0, x0
 
 	ret
 END(__start_mmu)

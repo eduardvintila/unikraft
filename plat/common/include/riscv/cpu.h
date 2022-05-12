@@ -4,6 +4,7 @@
  *			Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * CSR ops are taken from OpenSBI:
  *
@@ -53,7 +54,7 @@ static inline __u8 ioreg_read8(const volatile __u8 *address)
 {
 	__u8 value;
 
-	asm volatile ("lb %0, 0(%1)" : "=r"(value) : "r"(address));
+	asm volatile("lb %0, 0(%1)" : "=r"(value) : "r"(address));
 	return value;
 }
 
@@ -61,7 +62,7 @@ static inline __u16 ioreg_read16(const volatile __u16 *address)
 {
 	__u16 value;
 
-	asm volatile ("lh %0, 0(%1)" : "=r"(value) : "r"(address));
+	asm volatile("lh %0, 0(%1)" : "=r"(value) : "r"(address));
 	return value;
 }
 
@@ -69,7 +70,7 @@ static inline __u32 ioreg_read32(const volatile __u32 *address)
 {
 	__u32 value;
 
-	asm volatile ("lw %0, 0(%1)" : "=r"(value) : "r"(address));
+	asm volatile("lw %0, 0(%1)" : "=r"(value) : "r"(address));
 	return value;
 }
 
@@ -77,31 +78,28 @@ static inline __u64 ioreg_read64(const volatile __u64 *address)
 {
 	__u64 value;
 
-	asm volatile ("ld %0, 0(%1)" : "=r"(value) : "r"(address));
+	asm volatile("ld %0, 0(%1)" : "=r"(value) : "r"(address));
 	return value;
 }
 
 static inline void ioreg_write8(const volatile __u8 *address, __u8 value)
 {
-	asm volatile ("sb %0, 0(%1)" : : "rZ"(value), "r"(address));
+	asm volatile("sb %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
-static inline void ioreg_write16(const volatile __u16 *address,
-				 __u16 value)
+static inline void ioreg_write16(const volatile __u16 *address, __u16 value)
 {
-	asm volatile ("sh %0, 0(%1)" : : "rZ"(value), "r"(address));
+	asm volatile("sh %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
-static inline void ioreg_write32(const volatile __u32 *address,
-				 __u32 value)
+static inline void ioreg_write32(const volatile __u32 *address, __u32 value)
 {
-	asm volatile ("sw %0, 0(%1)" : : "rZ"(value), "r"(address));
+	asm volatile("sw %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
-static inline void ioreg_write64(const volatile __u64 *address,
-				 __u64 value)
+static inline void ioreg_write64(const volatile __u64 *address, __u64 value)
 {
-	asm volatile ("sd %0, 0(%1)" : : "rZ"(value), "r"(address));
+	asm volatile("sd %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
 /* TODO: Explain yourself. mul64_32 or mul64_64? */
@@ -109,81 +107,79 @@ static inline __u64 mul64_32(__u64 a, __u64 b)
 {
 	__u64 mul_high, mul_low;
 
-	__asm__ (
-		"mulhu %[rdh], %[rs1], %[rs2]\n\t"
+	__asm__("mulhu %[rdh], %[rs1], %[rs2]\n\t"
 		"mul %[rdl], %[rs1], %[rs2]\n\t"
-		: [rdh] "=&r" (mul_high), [rdl] "=&r" (mul_low)
-		: [rs1] "r" (a), [rs2] "r" (b)
-	);
+		: [rdh] "=&r"(mul_high), [rdl] "=&r"(mul_low)
+		: [rs1] "r"(a), [rs2] "r"(b));
 
-	return (__u64) ((mul_high << 32) | (mul_low >> 32));
+	return (__u64)((mul_high << 32) | (mul_low >> 32));
 }
 
-#define _csr_swap(csr, val)                                              \
-	({                                                              \
-		unsigned long __v = (unsigned long)(val);               \
-		__asm__ __volatile__("csrrw %0, " __ASM_STR(csr) ", %1" \
-				     : "=r"(__v)                        \
-				     : "rK"(__v)                        \
-				     : "memory");                       \
-		__v;                                                    \
+#define _csr_swap(csr, val)                                                    \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrrw %0, " __ASM_STR(csr) ", %1"        \
+				     : "=r"(__v)                               \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
+		__v;                                                           \
 	})
 
-#define _csr_read(csr)                                           \
-	({                                                      \
-		register unsigned long __v;                     \
-		__asm__ __volatile__("csrr %0, " __ASM_STR(csr) \
-				     : "=r"(__v)                \
-				     :                          \
-				     : "memory");               \
-		__v;                                            \
+#define _csr_read(csr)                                                         \
+	({                                                                     \
+		register unsigned long __v;                                    \
+		__asm__ __volatile__("csrr %0, " __ASM_STR(csr)                \
+				     : "=r"(__v)                               \
+				     :                                         \
+				     : "memory");                              \
+		__v;                                                           \
 	})
 
-#define _csr_write(csr, val)                                        \
-	({                                                         \
-		unsigned long __v = (unsigned long)(val);          \
-		__asm__ __volatile__("csrw " __ASM_STR(csr) ", %0" \
-				     :                             \
-				     : "rK"(__v)                   \
-				     : "memory");                  \
+#define _csr_write(csr, val)                                                   \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrw " __ASM_STR(csr) ", %0"             \
+				     :                                         \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
 	})
 
-#define _csr_read_set(csr, val)                                          \
-	({                                                              \
-		unsigned long __v = (unsigned long)(val);               \
-		__asm__ __volatile__("csrrs %0, " __ASM_STR(csr) ", %1" \
-				     : "=r"(__v)                        \
-				     : "rK"(__v)                        \
-				     : "memory");                       \
-		__v;                                                    \
+#define _csr_read_set(csr, val)                                                \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrrs %0, " __ASM_STR(csr) ", %1"        \
+				     : "=r"(__v)                               \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
+		__v;                                                           \
 	})
 
-#define _csr_set(csr, val)                                          \
-	({                                                         \
-		unsigned long __v = (unsigned long)(val);          \
-		__asm__ __volatile__("csrs " __ASM_STR(csr) ", %0" \
-				     :                             \
-				     : "rK"(__v)                   \
-				     : "memory");                  \
+#define _csr_set(csr, val)                                                     \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrs " __ASM_STR(csr) ", %0"             \
+				     :                                         \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
 	})
 
-#define _csr_read_clear(csr, val)                                        \
-	({                                                              \
-		unsigned long __v = (unsigned long)(val);               \
-		__asm__ __volatile__("csrrc %0, " __ASM_STR(csr) ", %1" \
-				     : "=r"(__v)                        \
-				     : "rK"(__v)                        \
-				     : "memory");                       \
-		__v;                                                    \
+#define _csr_read_clear(csr, val)                                              \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrrc %0, " __ASM_STR(csr) ", %1"        \
+				     : "=r"(__v)                               \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
+		__v;                                                           \
 	})
 
-#define _csr_clear(csr, val)                                        \
-	({                                                         \
-		unsigned long __v = (unsigned long)(val);          \
-		__asm__ __volatile__("csrc " __ASM_STR(csr) ", %0" \
-				     :                             \
-				     : "rK"(__v)                   \
-				     : "memory");                  \
+#define _csr_clear(csr, val)                                                   \
+	({                                                                     \
+		unsigned long __v = (unsigned long)(val);                      \
+		__asm__ __volatile__("csrc " __ASM_STR(csr) ", %0"             \
+				     :                                         \
+				     : "rK"(__v)                               \
+				     : "memory");                              \
 	})
 
 #endif

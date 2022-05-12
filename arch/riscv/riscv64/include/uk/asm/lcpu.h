@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,36 +43,33 @@ struct __regs {
 	/* Temporary registers t0-t6 */
 	unsigned long t[7];
 
-    /* Argument/return registers a0-a7 */
-    unsigned long a[8];
+	/* Argument/return registers a0-a7 */
+	unsigned long a[8];
 
-    /* Saved registers s0-s11 */
-    unsigned long s[12];
+	/* Saved registers s0-s11 */
+	unsigned long s[12];
 
-    /* Return address */
-    unsigned long ra;
+	/* Return address */
+	unsigned long ra;
 
-    /* Thread pointer */
-    unsigned long tp;
+	/* Thread pointer */
+	unsigned long tp;
 
-    /* Stack pointer */
-    unsigned long sp;
+	/* Stack pointer */
+	unsigned long sp;
 
-    /* Program counter */
-    unsigned long pc;
+	/* Program counter */
+	unsigned long pc;
 
-    /* Padding for achieving 16-byte structure alignment */
-    unsigned long pad;
+	/* Padding for achieving 16-byte structure alignment */
+	unsigned long pad;
 };
 
 static inline unsigned long ukarch_read_sp(void)
 {
 	unsigned long sp;
 
-	__asm__ __volatile (
-        "mv %0, sp"
-        : "=&r"(sp)
-    );
+	__asm__ __volatile("mv %0, sp" : "=&r"(sp));
 
 	return sp;
 }
