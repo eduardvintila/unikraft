@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,14 +37,12 @@
 void halt(void)
 {
 	/* TODO: Warning, wfi could be implemented as a NOP */
-    __asm__ __volatile__("wfi");
+	__asm__ __volatile__("wfi");
 }
 
 void system_off(void)
 {
-    /* Shutdown the system using an SBI call */
-    sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN, SBI_SRST_RESET_REASON_NONE);
+	/* Shutdown the system using an SBI call */
+	sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN,
+			 SBI_SRST_RESET_REASON_NONE);
 }
-
-
-

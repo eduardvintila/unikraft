@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved..
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,30 +35,30 @@
 #include <riscv/cpu.h>
 #include <riscv/cpu_defs.h>
 
-#define __set_sie()     _csr_set(CSR_SSTATUS, SSTATUS_SIE)
+#define __set_sie() _csr_set(CSR_SSTATUS, SSTATUS_SIE)
 
-#define __clear_sie()   _csr_clear(CSR_SSTATUS, SSTATUS_SIE)
+#define __clear_sie() _csr_clear(CSR_SSTATUS, SSTATUS_SIE)
 
-#define __save_flags(x) \
-({ \
-		unsigned long __f; \
-		__f = _csr_read(CSR_SSTATUS); \
-		x = (__f & SSTATUS_SIE) ? 1 : 0; \
-})
+#define __save_flags(x)                                                        \
+	({                                                                     \
+		unsigned long __f;                                             \
+		__f = _csr_read(CSR_SSTATUS);                                  \
+		x = (__f & SSTATUS_SIE) ? 1 : 0;                               \
+	})
 
-#define __restore_flags(x) \
-({ \
-		if (x) \
-			__set_sie(); \
-		else \
-			__clear_sie(); \
-})
+#define __restore_flags(x)                                                     \
+	({                                                                     \
+		if (x)                                                         \
+			__set_sie();                                           \
+		else                                                           \
+			__clear_sie();                                         \
+	})
 
-#define __save_and_clear_sie(x) \
-({ \
-	__save_flags(x); \
-	__clear_sie(); \
-})
+#define __save_and_clear_sie(x)                                                \
+	({                                                                     \
+		__save_flags(x);                                               \
+		__clear_sie();                                                 \
+	})
 
 static inline int irqs_disabled(void)
 {
@@ -68,13 +68,12 @@ static inline int irqs_disabled(void)
 	return !flag;
 }
 
-#define local_irq_save(x)     __save_and_clear_sie(x)
-#define local_irq_restore(x)  __restore_flags(x)
-#define local_save_flags(x)   __save_flags(x)
-#define local_irq_disable()	__clear_sie()
-#define local_irq_enable()	   __set_sie()
+#define local_irq_save(x) __save_and_clear_sie(x)
+#define local_irq_restore(x) __restore_flags(x)
+#define local_save_flags(x) __save_flags(x)
+#define local_irq_disable() __clear_sie()
+#define local_irq_enable() __set_sie()
 
-
-#define __MAX_IRQ	1024
+#define __MAX_IRQ 1024
 
 #endif /* __PLAT_CMN_RISCV64_IRQ_H__ */

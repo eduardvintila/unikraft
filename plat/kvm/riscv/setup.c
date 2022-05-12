@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
- *		    Eduard Vintila <eduard.vintila47@gmail.com>
+ *			Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,18 +48,18 @@
 #include <kvm/intctrl.h>
 #include <stdio.h>
 
-extern __u64 _setup_pagetables(void*);
+extern __u64 _setup_pagetables(void *);
 extern void _start_mmu(void);
 extern void _init_traps(void);
 
-struct kvmplat_config _libkvmplat_cfg = { 0 };
+struct kvmplat_config _libkvmplat_cfg = {0};
 
 #define MAX_CMDLINE_SIZE 1024
 static char cmdline[MAX_CMDLINE_SIZE];
 static const char *appname = CONFIG_UK_NAME;
 
-extern void _libkvmplat_newstack(uint64_t stack_start,
-			void (*tramp)(void *), void *arg);
+extern void _libkvmplat_newstack(uint64_t stack_start, void (*tramp)(void *),
+				 void *arg);
 
 static void _init_dtb(void *dtb_pointer)
 {
@@ -72,7 +72,7 @@ static void _init_dtb(void *dtb_pointer)
 
 	/* Move the DTB at the end of the kernel image */
 	dtb_size = fdt_totalsize(dtb_pointer);
-	_libkvmplat_cfg.dtb = memmove((void *) __END, dtb_pointer, dtb_size);
+	_libkvmplat_cfg.dtb = memmove((void *)__END, dtb_pointer, dtb_size);
 }
 
 static void _dtb_get_cmdline(char *cmdline, size_t maxlen)
@@ -83,8 +83,8 @@ static void _dtb_get_cmdline(char *cmdline, size_t maxlen)
 	fdtchosen = fdt_path_offset(_libkvmplat_cfg.dtb, "/chosen");
 	if (fdtchosen < 0)
 		goto enocmdl;
-	fdtcmdline = fdt_getprop(_libkvmplat_cfg.dtb, fdtchosen, "bootargs",
-				 &len);
+	fdtcmdline =
+	    fdt_getprop(_libkvmplat_cfg.dtb, fdtchosen, "bootargs", &len);
 	if (!fdtcmdline || (len <= 0))
 		goto enocmdl;
 
@@ -115,9 +115,8 @@ static void _init_dtb_mem(void)
 	if (fdt_num_mem_rsv(_libkvmplat_cfg.dtb) != 0)
 		uk_pr_warn("Reserved memory is not supported\n");
 
-	fdt_mem = fdt_node_offset_by_prop_value(_libkvmplat_cfg.dtb, -1,
-						"device_type",
-						"memory", sizeof("memory"));
+	fdt_mem = fdt_node_offset_by_prop_value(
+	    _libkvmplat_cfg.dtb, -1, "device_type", "memory", sizeof("memory"));
 	if (fdt_mem < 0) {
 		uk_pr_warn("No memory found in DTB\n");
 		return;
@@ -156,29 +155,20 @@ static void _init_dtb_mem(void)
 
 	max_addr = mem_base + mem_size;
 	uk_pr_info("Memory base: 0x%lx, size: 0x%lx, max_addr: 0x%lx\n",
-			 mem_base, mem_size, max_addr);
+		   mem_base, mem_size, max_addr);
 
 	if (_libkvmplat_cfg.pagetable.end > max_addr)
 		UK_CRASH("Not enough memory for storing the pagetables\n");
 
-	/* _libkvmplat_cfg.pagetable.start = ALIGN_DOWN((uintptr_t)__END,
-						     __PAGE_SIZE);
-	_libkvmplat_cfg.pagetable.len   = ALIGN_UP(page_table_size,
-						   __PAGE_SIZE);
-	_libkvmplat_cfg.pagetable.end   = _libkvmplat_cfg.pagetable.start
-					  + _libkvmplat_cfg.pagetable.len; */
-
-	_libkvmplat_cfg.bstack.end   = ALIGN_DOWN(max_addr,
-						  __STACK_ALIGN_SIZE);
-	_libkvmplat_cfg.bstack.len   = ALIGN_UP(__STACK_SIZE,
-						__STACK_ALIGN_SIZE);
-	_libkvmplat_cfg.bstack.start = _libkvmplat_cfg.bstack.end
-				       - _libkvmplat_cfg.bstack.len;
+	_libkvmplat_cfg.bstack.end = ALIGN_DOWN(max_addr, __STACK_ALIGN_SIZE);
+	_libkvmplat_cfg.bstack.len = ALIGN_UP(__STACK_SIZE, __STACK_ALIGN_SIZE);
+	_libkvmplat_cfg.bstack.start =
+	    _libkvmplat_cfg.bstack.end - _libkvmplat_cfg.bstack.len;
 
 	_libkvmplat_cfg.heap.start = _libkvmplat_cfg.pagetable.end;
-	_libkvmplat_cfg.heap.end   = _libkvmplat_cfg.bstack.start;
-	_libkvmplat_cfg.heap.len   = _libkvmplat_cfg.heap.end
-				     - _libkvmplat_cfg.heap.start;
+	_libkvmplat_cfg.heap.end = _libkvmplat_cfg.bstack.start;
+	_libkvmplat_cfg.heap.len =
+	    _libkvmplat_cfg.heap.end - _libkvmplat_cfg.heap.start;
 
 	if (_libkvmplat_cfg.heap.start > _libkvmplat_cfg.heap.end)
 		UK_CRASH("Not enough memory, giving up...\n");
@@ -186,20 +176,21 @@ static void _init_dtb_mem(void)
 
 static void _libkvmplat_entry2(void *arg __attribute__((unused)))
 {
-	ukplat_entry_argp(DECONST(char *, appname),
-			  (char *)cmdline, strlen(cmdline));
+	ukplat_entry_argp(DECONST(char *, appname), (char *)cmdline,
+			  strlen(cmdline));
 }
-
 
 void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 {
 	_init_dtb(dtb_pointer);
 
-    /* Setup the page tables at the end of the DTB and start the MMU */
-    _libkvmplat_cfg.pagetable.start = ALIGN_UP(__END + fdt_totalsize(_libkvmplat_cfg.dtb), __PAGE_SIZE);
-    _libkvmplat_cfg.pagetable.len   = _setup_pagetables((void *) _libkvmplat_cfg.pagetable.start);
-	_libkvmplat_cfg.pagetable.end   = _libkvmplat_cfg.pagetable.start
-					  + _libkvmplat_cfg.pagetable.len;
+	/* Setup the page tables at the end of the DTB and start the MMU */
+	_libkvmplat_cfg.pagetable.start =
+	    ALIGN_UP(__END + fdt_totalsize(_libkvmplat_cfg.dtb), __PAGE_SIZE);
+	_libkvmplat_cfg.pagetable.len =
+	    _setup_pagetables((void *)_libkvmplat_cfg.pagetable.start);
+	_libkvmplat_cfg.pagetable.end =
+	    _libkvmplat_cfg.pagetable.start + _libkvmplat_cfg.pagetable.len;
 	_start_mmu();
 
 	/* Setup the NS16550 serial UART */
@@ -217,13 +208,11 @@ void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 	intctrl_init();
 
 	uk_pr_info("pagetable start: %p\n",
-		   (void *) _libkvmplat_cfg.pagetable.start);
-	uk_pr_info("     heap start: %p\n",
-		   (void *) _libkvmplat_cfg.heap.start);
+		   (void *)_libkvmplat_cfg.pagetable.start);
+	uk_pr_info("     heap start: %p\n", (void *)_libkvmplat_cfg.heap.start);
 	uk_pr_info("      stack top: %p\n",
-		   (void *) _libkvmplat_cfg.bstack.start);
+		   (void *)_libkvmplat_cfg.bstack.start);
 
-	_libkvmplat_newstack((uint64_t) _libkvmplat_cfg.bstack.end,
-				_libkvmplat_entry2, NULL);
-
+	_libkvmplat_newstack((uint64_t)_libkvmplat_cfg.bstack.end,
+			     _libkvmplat_entry2, NULL);
 }

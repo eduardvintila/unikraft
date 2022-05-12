@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,12 +43,12 @@
 
 int timer_irq_handler(void *arg __unused)
 {
-    return 1;
+	return 1;
 }
 
 __nsec ukplat_monotonic_clock(void)
 {
-    return timer_monotonic_clock();
+	return timer_monotonic_clock();
 }
 
 __nsec ukplat_wall_clock(void)
@@ -58,29 +58,27 @@ __nsec ukplat_wall_clock(void)
 
 void ukplat_time_init(void)
 {
-    int rc;
+	int rc;
 
-    rc = init_rtc(_libkvmplat_cfg.dtb);
-    if (rc < 0)
-        uk_pr_warn("RTC device not found, wall time will not be accurate\n");
+	rc = init_rtc(_libkvmplat_cfg.dtb);
+	if (rc < 0)
+		uk_pr_warn(
+		    "RTC device not found, wall time will not be accurate\n");
 
-    rc = init_timer(_libkvmplat_cfg.dtb);
-    if (rc < 0)
-        UK_CRASH("Could not initialize the RISC-V timer\n");
+	rc = init_timer(_libkvmplat_cfg.dtb);
+	if (rc < 0)
+		UK_CRASH("Could not initialize the RISC-V timer\n");
 
-    rc = ukplat_irq_register(0, timer_irq_handler, NULL);
-    if (rc < 0)
-       UK_CRASH("Could not register the timer interrupt handler\n");
-
+	rc = ukplat_irq_register(0, timer_irq_handler, NULL);
+	if (rc < 0)
+		UK_CRASH("Could not register the timer interrupt handler\n");
 }
 
-void ukplat_time_fini(void)
-{
-}
+void ukplat_time_fini(void) {}
 
 uint32_t ukplat_time_get_irq(void)
 {
-    return 0;
+	return 0;
 }
 
 unsigned long sched_have_pending_events;

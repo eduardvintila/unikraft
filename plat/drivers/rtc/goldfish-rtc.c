@@ -2,7 +2,7 @@
 /*
  * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * TODO: Copyright notice
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,6 @@
  */
 #include <libfdt.h>
 #include <rtc/rtc.h>
-#include <riscv/cpu.h>
 #include <uk/print.h>
 
 #ifdef CONFIG_ARCH_ARM_64
@@ -49,55 +48,56 @@ static __paddr_t rtc_mmio_base;
 #define RTC_REG(r) ((__u32 *)(rtc_mmio_base + r))
 #define RTC_REG_READ(r) (ioreg_read32(RTC_REG(r)))
 
-
-/* Retrieve the base address of the memory mapped Goldfish RTC device from the DTB */
+/* Retrieve the base address of the memory mapped Goldfish RTC from the DTB */
 static __paddr_t _dtb_get_rtc_base(void *dtb)
 {
-    int rtc_node;
-    int naddr;
+	int rtc_node;
+	int naddr;
 	const void *regs;
-    __paddr_t base_addr;
+	__paddr_t base_addr;
 
-    rtc_node = fdt_node_offset_by_compatible(dtb, -1, "google,goldfish-rtc");
-    if (rtc_node < 0)
-        return (__paddr_t) NULL;
+	rtc_node =
+	    fdt_node_offset_by_compatible(dtb, -1, "google,goldfish-rtc");
+	if (rtc_node < 0)
+		return (__paddr_t)NULL;
 
-    naddr = fdt_address_cells(dtb, rtc_node);
-    regs = fdt_getprop(dtb, rtc_node, "reg", NULL);
+	naddr = fdt_address_cells(dtb, rtc_node);
+	regs = fdt_getprop(dtb, rtc_node, "reg", NULL);
 
-    if (naddr == 1)
-        base_addr = (__paddr_t) fdt32_to_cpu(*(__u32 *)regs);
-    else if (naddr == 2)
-        base_addr = (__paddr_t) fdt64_to_cpu(*(__u64 *)regs);
-    else
-        return (__paddr_t) NULL;
+	if (naddr == 1)
+		base_addr = (__paddr_t)fdt32_to_cpu(*(__u32 *)regs);
+	else if (naddr == 2)
+		base_addr = (__paddr_t)fdt64_to_cpu(*(__u64 *)regs);
+	else
+		return (__paddr_t)NULL;
 
-    uk_pr_info("Found goldfish-rtc device at %p\n", (void *) base_addr);
-    return base_addr;
+	uk_pr_info("Found goldfish-rtc device at %p\n", (void *)base_addr);
+	return base_addr;
 }
 
 /* Returns POSIX time if the RTC device has been initialized, 0 otherwise. */
 __u64 rtc_gettimeofday(void)
 {
-    __u64 time = 0;
+	__u64 time = 0;
 
-    if (rtc_mmio_base) {
-        __u64 time_low, time_high;
-        time_low = RTC_REG_READ(RTC_LOW);
-        time_high = RTC_REG_READ(RTC_HIGH);
-        time = (time_high << 32) | time_low;
-    }
+	if (rtc_mmio_base) {
+		__u64 time_low, time_high;
 
-    return time;
+		time_low = RTC_REG_READ(RTC_LOW);
+		time_high = RTC_REG_READ(RTC_HIGH);
+		time = (time_high << 32) | time_low;
+	}
+
+	return time;
 }
 
 /* Initialize the Goldfish RTC device. Returns 0 on success, -1 otherwise. */
 int init_rtc(void *dtb)
 {
-    rtc_mmio_base = _dtb_get_rtc_base(dtb);
+	rtc_mmio_base = _dtb_get_rtc_base(dtb);
 
-    if (!rtc_mmio_base)
-        return -1;
+	if (!rtc_mmio_base)
+		return -1;
 
-    return 0;
+	return 0;
 }
