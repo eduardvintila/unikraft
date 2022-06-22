@@ -39,7 +39,7 @@
 #include <riscv/time.h>
 #include <kvm/config.h>
 #include <uk/assert.h>
-#include <rtc/rtc.h>
+#include <rtc/goldfish.h>
 
 int timer_irq_handler(void *arg __unused)
 {
@@ -60,7 +60,7 @@ void ukplat_time_init(void)
 {
 	int rc;
 
-	rc = init_rtc(_libkvmplat_cfg.dtb);
+	rc = goldfish_init_rtc(_libkvmplat_cfg.dtb);
 	if (rc < 0)
 		uk_pr_warn(
 		    "RTC device not found, wall time will not be accurate\n");
