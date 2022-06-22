@@ -65,6 +65,22 @@ struct __regs {
 	unsigned long pad;
 };
 
+#ifndef mb
+#define mb() __asm__ __volatile__("fence" : : : "memory")
+#endif
+
+#ifndef rmb
+#define rmb() __asm__ __volatile__("fence ir, ir" : : : "memory")
+#endif
+
+#ifndef wmb
+#define wmb() __asm__ __volatile__("fence ow, ow" : : : "memory")
+#endif
+
+#ifndef nop
+#define nop() __asm__ __volatile__("nop" : : : "memory")
+#endif
+
 static inline unsigned long ukarch_read_sp(void)
 {
 	unsigned long sp;
