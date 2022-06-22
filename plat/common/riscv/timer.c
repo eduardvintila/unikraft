@@ -61,7 +61,7 @@
 #include <uk/plat/lcpu.h>
 #include <uk/assert.h>
 #include <uk/print.h>
-#include <rtc/rtc.h>
+#include <rtc/goldfish.h>
 #include <libfdt.h>
 
 /* Frequency at which the time counter CSR is updated */
@@ -163,10 +163,10 @@ int init_timer(void *dtb)
 	if (!timebase_freq)
 		return -1;
 
-	rtc_boot = rtc_gettimeofday();
+	rtc_boot = goldfish_read_raw();
 	boot_ticks = get_timer_ticks();
 
-	uk_pr_info("RTC timeofday boot: %lu\n", rtc_gettimeofday());
+	uk_pr_info("RTC boot: %lu\n", goldfish_read_raw());
 	uk_pr_info("Boot-time ticks: %lu\n", boot_ticks);
 	uk_pr_info("Found time counter frequency: %u\n", timebase_freq);
 
