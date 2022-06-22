@@ -33,6 +33,10 @@
 #include <uk/arch/types.h>
 #include <riscv/cpu.h>
 #include <uk/print.h>
+#include <uk/assert.h>
+#include <riscv/irq.h>
+#include <kvm/irq.h>
+#include <ofw/fdt.h>
 
 /* PLIC memory map */
 #define PLIC_PRIORITIES_OFFSET 0
@@ -75,9 +79,8 @@ static __paddr_t plic_mmio_base;
 /* Retrieve the base address of the memory mapped PLIC */
 static __paddr_t _dtb_get_plic_base(void *dtb)
 {
-	int plic_node;
-	int naddr;
-	const void *regs;
+	int plic_node, rc;
+	__u64 size;
 	__paddr_t base_addr;
 
 	if ((plic_node =
@@ -88,14 +91,8 @@ static __paddr_t _dtb_get_plic_base(void *dtb)
 		   < 0)
 		return (__paddr_t)NULL;
 
-	naddr = fdt_address_cells(dtb, plic_node);
-	regs = fdt_getprop(dtb, plic_node, "reg", NULL);
-
-	if (naddr == 1)
-		base_addr = (__paddr_t)fdt32_to_cpu(*(__u32 *)regs);
-	else if (naddr == 2)
-		base_addr = (__paddr_t)fdt64_to_cpu(*(__u64 *)regs);
-	else
+	rc = fdt_get_address(dtb, plic_node, 0, &base_addr, &size);
+	if (rc < 0)
 		return (__paddr_t)NULL;
 
 	uk_pr_info("Found RISC-V PLIC at %p\n", (void *)base_addr);
@@ -141,12 +138,19 @@ unsigned int plic_claim(void)
 
 void plic_complete(unsigned int irq)
 {
-	return PLIC_REG_WRITE(PLIC_BOOT_CTX_COMPLETE_OFFSET, irq);
+	PLIC_REG_WRITE(PLIC_BOOT_CTX_COMPLETE_OFFSET, irq);
 }
 
 void plic_handle_irq(void)
 {
-	// TODO
+	unsigned int irq;
+
+	while ((irq = plic_claim())) {
+		if (irq < 0 || irq >= __MAX_IRQ)
+			UK_CRASH("Invalid IRQ, crashing...\n");
+		_ukplat_irq_handle(irq);
+		plic_complete(irq);
+	}
 }
 
 int init_plic(void *dtb)
@@ -155,5 +159,6 @@ int init_plic(void *dtb)
 	if (!plic_mmio_base)
 		return -1;
 
+	plic_set_priority_threshold(0);
 	return 0;
 }
