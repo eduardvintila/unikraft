@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
+ * Authors: Florian Schmidt <florian.schmidt@neclab.eu>
+ *			Eduard Vintila <eduard.vintila47@gmail.com>
  *
+ * Copyright (c) 2019, NEC Laboratories Europe GmbH. All rights reserved.
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,66 +32,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __UKARCH_LCPU_H__
+#ifndef __UKARCH_TLS_H__
 #error Do not include this header directly
 #endif
 
+#warning Thread-local storage has not been tested thoroughly on riscv64!
+
 #include <uk/arch/types.h>
+#include <string.h>
 
-#define REGBYTES 8
+#define TCB_SIZE 0
 
-#define CACHE_LINE_SIZE	64
+extern char _tls_start[], _etdata[], _tls_end[];
 
-#ifndef __ASSEMBLY__
-struct __regs {
-	/* Temporary registers t0-t6 */
-	unsigned long t[7];
-
-	/* Argument/return registers a0-a7 */
-	unsigned long a[8];
-
-	/* Saved registers s0-s11 */
-	unsigned long s[12];
-
-	/* Return address */
-	unsigned long ra;
-
-	/* Thread pointer */
-	unsigned long tp;
-
-	/* Stack pointer */
-	unsigned long sp;
-
-	/* Program counter */
-	unsigned long pc;
-
-	/* Padding for achieving 16-byte structure alignment */
-	unsigned long pad;
-};
-
-#ifndef mb
-#define mb() __asm__ __volatile__("fence" : : : "memory")
-#endif
-
-#ifndef rmb
-#define rmb() __asm__ __volatile__("fence ir, ir" : : : "memory")
-#endif
-
-#ifndef wmb
-#define wmb() __asm__ __volatile__("fence ow, ow" : : : "memory")
-#endif
-
-#ifndef nop
-#define nop() __asm__ __volatile__("nop" : : : "memory")
-#endif
-
-static inline unsigned long ukarch_read_sp(void)
+static inline __sz ukarch_tls_area_size(void)
 {
-	unsigned long sp;
-
-	__asm__ __volatile("mv %0, sp" : "=&r"(sp));
-
-	return sp;
+	/* The RISC-V ABI uses Variant I as described by the ELF TLS
+	 * specification.
+	 */
+	return _tls_end - _tls_start + TCB_SIZE;
 }
 
-#endif
+static inline __sz ukarch_tls_area_align(void)
+{
+	return 8;
+}
+
+static inline void ukarch_tls_area_copy(void *tls_area)
+{
+	__sz tls_data_len = _etdata - _tls_start;
+	__sz tls_bss_len = _tls_end - _etdata;
+
+	memset(tls_area, 0, TCB_SIZE);
+	memcpy(tls_area + TCB_SIZE, _tls_start, tls_data_len);
+	memset(tls_area + tls_data_len + TCB_SIZE, 0, tls_bss_len);
+}
+
+static inline void *ukarch_tls_pointer(void *tls_area)
+{
+	/* As per the RISC-V ABI spec, $tp contains the address one past the end
+	 * of the TCB
+	 */
+	return tls_area + TCB_SIZE;
+}

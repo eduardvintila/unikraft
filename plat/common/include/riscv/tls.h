@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
- *
- * Copyright (c) 2022, University of Bucharest. All rights reserved.
+ * Copyright (c) 2019, NEC Europe Ltd., NEC Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,67 +27,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef __PLAT_CMN_RISCV_TLS_H__
+#define __PLAT_CMN_RISCV_TLS_H__
 
-#ifndef __UKARCH_LCPU_H__
-#error Do not include this header directly
-#endif
+#define set_tls_pointer(ptr) __asm__("mv tp, %0" : : "r"(ptr))
 
-#include <uk/arch/types.h>
-
-#define REGBYTES 8
-
-#define CACHE_LINE_SIZE	64
-
-#ifndef __ASSEMBLY__
-struct __regs {
-	/* Temporary registers t0-t6 */
-	unsigned long t[7];
-
-	/* Argument/return registers a0-a7 */
-	unsigned long a[8];
-
-	/* Saved registers s0-s11 */
-	unsigned long s[12];
-
-	/* Return address */
-	unsigned long ra;
-
-	/* Thread pointer */
-	unsigned long tp;
-
-	/* Stack pointer */
-	unsigned long sp;
-
-	/* Program counter */
-	unsigned long pc;
-
-	/* Padding for achieving 16-byte structure alignment */
-	unsigned long pad;
-};
-
-#ifndef mb
-#define mb() __asm__ __volatile__("fence" : : : "memory")
-#endif
-
-#ifndef rmb
-#define rmb() __asm__ __volatile__("fence ir, ir" : : : "memory")
-#endif
-
-#ifndef wmb
-#define wmb() __asm__ __volatile__("fence ow, ow" : : : "memory")
-#endif
-
-#ifndef nop
-#define nop() __asm__ __volatile__("nop" : : : "memory")
-#endif
-
-static inline unsigned long ukarch_read_sp(void)
-{
-	unsigned long sp;
-
-	__asm__ __volatile("mv %0, sp" : "=&r"(sp));
-
-	return sp;
-}
-
-#endif
+#endif /* __PLAT_CMN_RISCV_TLS_H__ */
