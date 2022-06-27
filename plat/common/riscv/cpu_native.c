@@ -32,12 +32,23 @@
 #include <uk/config.h>
 #include <uk/plat/common/cpu.h>
 #include <riscv/sbi.h>
+#include <riscv/cpu.h>
+#include <riscv/cpu_defs.h>
 #include <uk/assert.h>
 
+/* Halts the CPU until an interrupt is pending */
 void halt(void)
 {
-	/* TODO: Warning, wfi could be implemented as a NOP */
-	__asm__ __volatile__("wfi");
+	/*
+	 * From the RISC-V privileged manual:
+	 *
+	 * "As implementations are free to implement WFI as a NOP,
+	 * software must explicitly check for any relevant pending but disabled
+	 * interrupts in the code following an WFI, and should loop back
+	 * to the WFI if no suitable interrupt was detected."
+	 */
+	while (!_csr_read(CSR_SIP))
+		__asm__ __volatile__("wfi");
 }
 
 void system_off(void)

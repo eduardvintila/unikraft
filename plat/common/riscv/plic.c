@@ -56,7 +56,7 @@
  * interrupts.
  *
  * One must take into account the above context numbering scheme if they wish to
- * directly route PLIC interrupts to other harts aswell.
+ * directly route PLIC interrupts to other harts as well.
  */
 #define PLIC_BOOT_CTX 1
 
@@ -101,8 +101,8 @@ static __paddr_t _dtb_get_plic_base(void *dtb)
 
 void plic_enable_irq(unsigned int irq)
 {
-	__u32 word_offset = irq / 32;
-	__u8 bit_offset = irq % 32;
+	__u32 word_offset = irq >> 3; // (irq / 32) * sizeof(__u32)
+	__u8 bit_offset = irq & 31; // irq % 32
 	__u32 mask = 1 << bit_offset;
 	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset);
 
@@ -112,8 +112,8 @@ void plic_enable_irq(unsigned int irq)
 
 void plic_disable_irq(unsigned int irq)
 {
-	__u32 word_offset = irq / 32;
-	__u8 bit_offset = irq % 32;
+	__u32 word_offset = irq >> 3; // (irq / 32) * sizeof(__u32)
+	__u8 bit_offset = irq & 31; // irq % 32
 	__u32 mask = ~(1 << bit_offset);
 	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset);
 
@@ -123,7 +123,7 @@ void plic_disable_irq(unsigned int irq)
 
 void plic_set_priority(unsigned int irq, __u32 priority)
 {
-	PLIC_REG_WRITE(PLIC_PRIORITIES_OFFSET + irq * 4, priority);
+	PLIC_REG_WRITE(PLIC_PRIORITIES_OFFSET + irq * sizeof(__u32), priority);
 }
 
 void plic_set_priority_threshold(__u32 threshold)
@@ -145,11 +145,11 @@ void plic_handle_irq(void)
 {
 	unsigned int irq;
 
+	/* Run the handler as long as there is an interrupt pending */
 	while ((irq = plic_claim())) {
-		if (irq < 0 || irq >= __MAX_IRQ)
+		if (irq >= __MAX_IRQ)
 			UK_CRASH("Invalid IRQ, crashing...\n");
 		_ukplat_irq_handle(irq);
-		plic_complete(irq);
 	}
 }
 

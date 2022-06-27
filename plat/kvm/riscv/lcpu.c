@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
+ *          Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,8 +47,12 @@ void ukplat_lcpu_disable_irq(void)
 
 void ukplat_lcpu_halt_irq(void)
 {
-	ukplat_lcpu_enable_irq();
 	halt();
+
+	/* Enable interrupts in order to handle the pending interrupt. */
+	ukplat_lcpu_enable_irq();
+
+	/* Disable interrupts after returning from the trap handler. */
 	ukplat_lcpu_disable_irq();
 }
 

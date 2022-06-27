@@ -39,6 +39,7 @@
 #include <uk/essentials.h>
 #include <uk/plat/bootstrap.h>
 #include <uk/print.h>
+#include <uk/assert.h>
 #include <kvm/config.h>
 #include <libfdt.h>
 #include <uart/ns16550.h>

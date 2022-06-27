@@ -132,15 +132,14 @@ static __u32 _dtb_get_timer_freq(void *dtb)
 void timer_cpu_block_until(__nsec until)
 {
 	__nsec now_ns;
-	__u64 delta_ticks, now_ticks, until_ticks;
+	__u64 delta_ticks, until_ticks;
 
 	UK_ASSERT(ukplat_lcpu_irqs_disabled());
 
-	now_ticks = get_timer_ticks();
-	now_ns = ticks_to_ns(now_ticks);
+	now_ns = timer_monotonic_clock();
 	if (now_ns < until) {
 		delta_ticks = ns_to_ticks(until - now_ns);
-		until_ticks = now_ticks + delta_ticks;
+		until_ticks = get_timer_ticks() + delta_ticks;
 
 		/* Set the time alarm through SBI */
 		sbi_set_timer(until_ticks);
