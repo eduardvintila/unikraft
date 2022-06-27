@@ -44,6 +44,7 @@
 
 #include <uk/essentials.h>
 #include <uk/arch/types.h>
+#include <uk/plat/common/sw_ctx.h>
 
 void halt(void);
 void system_off(void);
@@ -113,6 +114,21 @@ static inline __u64 mul64_32(__u64 a, __u64 b)
 		: [rs1] "r"(a), [rs2] "r"(b));
 
 	return (__u64)((mul_high << 32) | (mul_low >> 32));
+}
+
+static inline void save_extregs(struct sw_ctx *ctx __unused) {}
+
+static inline void restore_extregs(struct sw_ctx *ctx __unused) {}
+
+static inline void arch_init_extregs(struct sw_ctx *ctx)
+{
+	if (ctx)
+		ctx->extregs = (uintptr_t)ctx->_extregs;
+}
+
+static inline __sz arch_extregs_size(void)
+{
+	return 0;
 }
 
 #define _csr_swap(csr, val)                                                    \
