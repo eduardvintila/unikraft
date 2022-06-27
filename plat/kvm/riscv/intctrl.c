@@ -45,7 +45,7 @@ void intctrl_clear_irq(unsigned int irq)
 	 * hence timer interrupts are not treated as external interrupts.
 	 */
 	if (irq)
-		plic_enable_irq(irq);
+		plic_enable_irq(irq), plic_set_priority(irq, 1);
 	else
 		/*
 		 * Sets the enable supervisor timer interrupt bit.
@@ -66,9 +66,9 @@ void intctrl_mask_irq(unsigned int irq)
 
 void intctrl_ack_irq(unsigned int irq)
 {
-	if (irq)
+	if (irq) {
 		plic_complete(irq);
-	else
+	} else {
 		/*
 		 * From the RISC-V SBI spec: "If the supervisor wishes to clear
 		 * the timer interrupt without scheduling the next timer event,
@@ -79,6 +79,7 @@ void intctrl_ack_irq(unsigned int irq)
 		 * bit to mark that the interrupt has been acknowledged.
 		 */
 		sbi_set_timer((__u64)-1);
+	}
 }
 
 void intctrl_init(void)

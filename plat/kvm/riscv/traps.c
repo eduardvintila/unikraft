@@ -46,9 +46,10 @@ extern void __trap_handler(void);
 
 void do_unknown_exception(struct __regs *regs, unsigned long scause)
 {
-	uk_pr_crit(
-	    "Unknown exception, scause: %lu, pc: %lx, sp: %lx, fp: %lx\n",
-	    scause, regs->pc, regs->sp, regs->s[0]);
+	unsigned long stval = _csr_read(CSR_STVAL);
+
+	uk_pr_crit("Unknown exception, scause: %lu, pc: 0x%lx, stval: 0x%lx, sp: "
+	    "0x%lx, fp: 0x%lx\n", scause, regs->pc, stval, regs->sp, regs->s[0]);
 
 	/* TODO: dump regs and mem */
 	UK_CRASH("Crashing...\n");
@@ -59,8 +60,7 @@ void do_page_fault(struct __regs *regs, unsigned long scause __unused)
 	unsigned long stval = _csr_read(CSR_STVAL);
 
 	uk_pr_crit("Page fault at address 0x%lx, stval: 0x%lx, sp: 0x%lx, "
-		   "fp: 0x%lx\n",
-		   regs->pc, stval, regs->sp, regs->s[0]);
+		   "fp: 0x%lx\n", regs->pc, stval, regs->sp, regs->s[0]);
 
 	/* TODO: dump regs and mem */
 	UK_CRASH("Crashing...\n");

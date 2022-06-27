@@ -8,6 +8,7 @@ menuconfig PLAT_KVM
        select LIBUKTIMECONV
        select LIBNOLIBC if !HAVE_LIBC
        select LIBFDT if (ARCH_ARM_64 || ARCH_RISCV_64)
+       select LIBOFW if ARCH_RISCV_64
        help
                 Create a Unikraft image that runs as a KVM guest
 
@@ -86,15 +87,16 @@ config KVM_MAX_IRQ_HANDLER_ENTRIES
 config KVM_PCI
        bool "PCI Bus Driver"
        default y
-       depends on (ARCH_X86_64 || ARCH_ARM_64)
+       depends on (ARCH_X86_64 || ARCH_ARM_64 || ARCH_RISCV_64)
        select LIBUKBUS
+	   select LIBOFW if (ARCH_ARM_64 || ARCH_RISCV_64)
        help
                 PCI bus driver for probing and operating PCI devices
 
 config KVM_PF
        bool "Platform Bus Driver"
        default y
-       depends on (ARCH_ARM_64)
+       depends on (ARCH_ARM_64 || ARCH_RISCV_64)
        select LIBUKBUS
        help
                Platform bus driver for probing and operating platform devices
@@ -102,7 +104,7 @@ config KVM_PF
 config VIRTIO_BUS
       bool  "Virtio bus driver"
       default y
-      depends on (ARCH_X86_64 || ARCH_ARM_64)
+      depends on (ARCH_X86_64 || ARCH_ARM_64 || ARCH_RISCV_64)
       depends on LIBUKBUS
       select LIBUKALLOC
       select LIBUKSGLIST
@@ -161,7 +163,7 @@ config RTC_PL031
 config LIBOFW
        bool "Open Firmware library support"
        default n
-       depends on ARCH_ARM_64
+       depends on (ARCH_ARM_64 || ARCH_RISCV_64)
        select LIBFDT
 
 endif

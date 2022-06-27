@@ -33,6 +33,7 @@
 #include <rtc/rtc.h>
 #include <uk/arch/time.h>
 #include <uk/print.h>
+#include <ofw/fdt.h>
 
 #ifdef CONFIG_ARCH_ARM_64
 #include <arm/cpu.h>
