@@ -46,7 +46,8 @@
  */
 static inline unsigned int ukarch_ffs(unsigned int x)
 {
-	return __builtin_ffs(x) - 1;
+	/* The ffs compiler intrinsic is missing on RISC-V. We can use ffsl instead */
+	return __builtin_ffsl(x) - 1;
 }
 
 /**
