@@ -70,7 +70,7 @@ config HAVE_PAGING
 
 config HAVE_PAGING_DIRECTMAP
 	bool
-	default y if PAGING && ARCH_X86_64
+	default y if PAGING && (ARCH_X86_64 || ARCH_RISCV_64)
 	default n
 
 config ENFORCE_W_XOR_X

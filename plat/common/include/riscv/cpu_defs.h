@@ -26,6 +26,9 @@
 #define SATP_MODE_OFF _UL(0)
 #define SATP_MODE_SV39 _UL(8)
 
+#define SATP64_MODE_SHIFT 60
+#define SATP64_ASID_SHIFT 44
+
 /* SSTATUS Register Fields */
 #define SSTATUS_SIE _UL(0x00000002)
 #define SSTATUS_SPIE_SHIFT 5

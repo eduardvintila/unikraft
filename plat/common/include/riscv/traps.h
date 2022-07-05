@@ -30,58 +30,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <uk/arch/limits.h>
-#include <uk/asm.h>
-#include <uk/plat/common/sections.h>
-#include <uk/config.h>
+#ifndef __PLAT_CMN_RISCV_TRAPS_H__
+#define __PLAT_CMN_RISCV_TRAPS_H__
 
-.section .bss
-.space 4096
-bootstack:
-.balign __STACK_ALIGN_SIZE
+int _init_traps(void);
 
-.section .data.boot
-#include "pagetable64.S"
-
-#define SATP_MODE_SV39 8
-#define SATP_MODE_SHIFT 60
-
-.section .text
-ENTRY(_libkvmplat_entry)
-	/*
-	 * As per the RISC-V SBI spec, execution starts in supervisor mode, with each hart (hardware thread)
-	 * having its hartid placed in the a0 register. Choose the hart with the id 0 to manage the booting
-	 * process and suspend the others for the moment.
-	 */
-	bnez a0, 2f
-
-	/* Enable paging */
-	li t0, SATP_MODE_SV39
-	slli t0, t0, SATP_MODE_SHIFT
-	la t1, riscv64_pt_l2_0
-	srli t1, t1, PAGE_SHIFT
-	or t1, t0, t1
-	csrw satp, t1
-	sfence.vma x0, x0
-
-	/* Setup the temporary bootstack */
-	la sp, bootstack
-
-	/* The a1 register holds the address of the DTB which is passed as a parameter to the C function */
-	call _libkvmplat_start
-2:
-	wfi
-	j 2b
-
-END(_libkvmplat_entry)
-
-ENTRY(_libkvmplat_newstack)
-	/* Switch to the new stack */
-	mv sp, a0
-
-	/* Load argument for the next function */
-	mv a0, a2
-
-	/* Jump to the next function */
-	jr a1
-END(_libkvmplat_newstack)
+#endif /* __PLAT_CMN_RISCV_TRAPS_H__ */

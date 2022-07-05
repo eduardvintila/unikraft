@@ -130,7 +130,6 @@ LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/intctrl.c
 ## Architecture library definitions for riscv64
 ##
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/entry64.S
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/setup_paging.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/setup.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/traps.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/exceptions.S
@@ -142,6 +141,13 @@ LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/intctrl.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/cpu_native.c|common
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/timer.c|common
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/plic.c|common
+
+ifeq ($(CONFIG_PAGING),y)
+LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/paging.c|common
+# Needed for riscv/cpu_* headers included in the riscv64 implementation of asm/paging.h
+# TODO: Move this to ukfallocbuddy's Makefile.uk?
+LIBUKFALLOCBUDDY_CINCLUDES-y += -I$(UK_PLAT_COMMON_BASE)/include
+endif
 
 ifeq ($(CONFIG_HAVE_SCHED),y)
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/thread_start64.S|common

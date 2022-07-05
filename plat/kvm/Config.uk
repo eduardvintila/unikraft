@@ -1,7 +1,7 @@
 menuconfig PLAT_KVM
        bool "KVM guest"
        default n
-       depends on (ARCH_X86_64 || (ARCH_ARM_64 && !HAVE_SYSCALL) || (ARCH_RISCV_64 && !HAVE_SMP && !HAVE_SYSCALL && !HAVE_PAGING))
+       depends on (ARCH_X86_64 || (ARCH_ARM_64 && !HAVE_SYSCALL) || (ARCH_RISCV_64 && !HAVE_SMP && !HAVE_SYSCALL))
        select LIBUKDEBUG
        select LIBUKALLOC
        select LIBUKTIMECONV
@@ -88,7 +88,7 @@ config KVM_PCI
        default y
        depends on (ARCH_X86_64 || ARCH_ARM_64 || ARCH_RISCV_64)
        select LIBUKBUS
-	   select LIBOFW if (ARCH_ARM_64 || ARCH_RISCV_64)
+	select LIBOFW if (ARCH_ARM_64 || ARCH_RISCV_64)
        help
                 PCI bus driver for probing and operating PCI devices
 

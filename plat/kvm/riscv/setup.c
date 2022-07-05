@@ -1,10 +1,23 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
- *			Eduard Vintila <eduard.vintila47@gmail.com>
+ *          Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
+ *
+ * Some parts from _init_paging() are taken from the x86 setup.c source code:
+ *
+ * Authors: Dan Williams
+ *          Martin Lucina
+ *          Ricardo Koller
+ *          Felipe Huici <felipe.huici@neclab.eu>
+ *          Florian Schmidt <florian.schmidt@neclab.eu>
+ *          Simon Kuenzer <simon.kuenzer@neclab.eu>
+ *
+ * Copyright (c) 2015-2017 IBM
+ * Copyright (c) 2016-2017 Docker, Inc.
+ * Copyright (c) 2017 NEC Europe Ltd., NEC Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,13 +58,15 @@
 #include <uart/ns16550.h>
 #include <string.h>
 #include <riscv/sbi.h>
+#include <riscv/traps.h>
 #include <uk/plat/time.h>
 #include <kvm/intctrl.h>
-#include <stdio.h>
 
-extern __u64 _setup_pagetables(void *);
-extern void _start_mmu(void);
-extern void _init_traps(void);
+#ifdef CONFIG_PAGING
+#include <uk/plat/paging.h>
+#include <uk/falloc.h>
+#include <uk/plat/common/sections.h>
+#endif
 
 struct kvmplat_config _libkvmplat_cfg = {0};
 
@@ -158,15 +173,13 @@ static void _init_dtb_mem(void)
 	uk_pr_info("Memory base: 0x%lx, size: 0x%lx, max_addr: 0x%lx\n",
 		   mem_base, mem_size, max_addr);
 
-	if (_libkvmplat_cfg.pagetable.end > max_addr)
-		UK_CRASH("Not enough memory for storing the pagetables\n");
-
 	_libkvmplat_cfg.bstack.end = ALIGN_DOWN(max_addr, __STACK_ALIGN_SIZE);
 	_libkvmplat_cfg.bstack.len = ALIGN_UP(__STACK_SIZE, __STACK_ALIGN_SIZE);
 	_libkvmplat_cfg.bstack.start =
 	    _libkvmplat_cfg.bstack.end - _libkvmplat_cfg.bstack.len;
 
-	_libkvmplat_cfg.heap.start = _libkvmplat_cfg.pagetable.end;
+	_libkvmplat_cfg.heap.start =
+	    ALIGN_UP(__END + fdt_totalsize(_libkvmplat_cfg.dtb), __PAGE_SIZE);
 	_libkvmplat_cfg.heap.end = _libkvmplat_cfg.bstack.start;
 	_libkvmplat_cfg.heap.len =
 	    _libkvmplat_cfg.heap.end - _libkvmplat_cfg.heap.start;
@@ -174,6 +187,167 @@ static void _init_dtb_mem(void)
 	if (_libkvmplat_cfg.heap.start > _libkvmplat_cfg.heap.end)
 		UK_CRASH("Not enough memory, giving up...\n");
 }
+
+#ifdef CONFIG_PAGING
+/* TODO: Find an appropriate solution to manage the address space layout
+ * without the presence of any more advanced virtual memory management.
+ * For now, we simply map the heap statically at 0x400000000 (16 GiB).
+ */
+#define PG_HEAP_MAP_START (1UL << 34) /* 16 GiB */
+
+/* The static boot pagetable */
+static struct uk_pagetable boot_pt;
+
+/* New pagetable */
+static struct uk_pagetable kernel_pt;
+
+/* RAM base address from the linker script */
+extern char _start_ram_addr[];
+
+static int _identity_map_region(struct uk_pagetable *pt, __paddr_t start,
+				 __paddr_t end, unsigned int prot)
+{
+	int rc;
+	__paddr_t al_start = PAGE_ALIGN_DOWN(start);
+	__paddr_t al_end = PAGE_ALIGN_UP(end);
+	__sz pages = (al_end - al_start) >> PAGE_SHIFT;
+
+	rc = ukplat_page_map(pt, al_start, al_start, pages, prot, 0);
+
+	return rc;
+}
+
+static void _init_paging(void)
+{
+	struct kvmplat_config_memregion *mr;
+	__sz offset, len;
+	__paddr_t start;
+	__sz free_memory, res_memory;
+	unsigned long frames;
+	int rc;
+
+	/* Initialize the frame allocator by taking away the memory from the
+	 * heap area.
+	 */
+	mr = &_libkvmplat_cfg.heap;
+
+	offset = mr->start - PAGE_ALIGN_UP(mr->start);
+	start = PAGE_ALIGN_UP(mr->start);
+	len = PAGE_ALIGN_DOWN(mr->len - offset);
+
+	rc = ukplat_pt_init(&boot_pt, start, len);
+	if (unlikely(rc)) {
+		goto EXIT_FATAL;
+	}
+
+	/* Clone the boot page table so we can unmap stuff */
+	rc = ukplat_pt_clone(&kernel_pt, &boot_pt, 0);
+	if (unlikely(rc)) {
+		goto EXIT_FATAL;
+	}
+
+	/*
+	 * The static boot pagetable identity maps the first 4GiB of RAM as RWX.
+	 * Unmap this region, so we can later map each section
+	 * in the kernel image with its appropriate attributes.
+	 */
+	start = (__paddr_t)_start_ram_addr;
+	len = (PAGE_HUGE_SIZE * 4) >> PAGE_SHIFT;
+	rc = ukplat_page_unmap(&kernel_pt, start, len, PAGE_FLAG_KEEP_FRAMES);
+	if (unlikely(rc)) {
+		goto EXIT_FATAL;
+	}
+
+	/*
+	 * TODO: The static boot pagetable also identity maps the MMIO region
+	 * 0x0 - 0x80000000. Maybe we should unmap this region as well and
+	 * somehow use virtual addresses from the direct mapping to do MMIO,
+	 * instead.
+	 */
+
+	/* Kernel image sections */
+	_identity_map_region(&kernel_pt, __TEXT, __ETEXT,
+			    PAGE_ATTR_PROT_READ | PAGE_ATTR_PROT_EXEC);
+	_identity_map_region(&kernel_pt, __ETEXT, __RODATA,
+				PAGE_ATTR_PROT_RW);
+	_identity_map_region(&kernel_pt, __RODATA, __ECTORS,
+			    PAGE_ATTR_PROT_READ);
+	_identity_map_region(&kernel_pt, __ECTORS, __END,
+				PAGE_ATTR_PROT_RW);
+
+	/* Map the DTB, which resides immediately after the kernel image */
+	_identity_map_region(&kernel_pt, __END,
+			     __END + fdt_totalsize(_libkvmplat_cfg.dtb),
+			     PAGE_ATTR_PROT_RW);
+
+	/* Switch to the new page table */
+	rc = ukplat_pt_set_active(&kernel_pt);
+	if (unlikely(rc)) {
+		goto EXIT_FATAL;
+	}
+
+	/* TODO: We don't have any virtual address space management yet. We are
+	 * also missing demand paging and the means to dynamically assign frames
+	 * to the heap or other areas (e.g., mmap). We thus simply statically
+	 * pre-map the RAM as heap.
+	 * To map all this memory we also need page tables. This memory won't be
+	 * available for use by the heap, so we reduce the heap size by this
+	 * amount. We compute the number of page tables for the worst case
+	 * (i.e., 4K pages). Also reserve some space for the boot stack.
+	 */
+	free_memory = kernel_pt.fa->free_memory;
+	frames = free_memory >> PAGE_SHIFT;
+
+	res_memory = __STACK_SIZE;		      /* boot stack */
+	res_memory += PT_PAGES(frames) << PAGE_SHIFT; /* page tables */
+
+	_libkvmplat_cfg.heap.start = PG_HEAP_MAP_START;
+	_libkvmplat_cfg.heap.end = PG_HEAP_MAP_START + free_memory - res_memory;
+	_libkvmplat_cfg.heap.len =
+	    _libkvmplat_cfg.heap.end - _libkvmplat_cfg.heap.start;
+
+	uk_pr_info("HEAP area @ %"__PRIpaddr
+		   " - %"__PRIpaddr
+		   " (%"__PRIsz
+		   " bytes)\n",
+		   (__paddr_t)_libkvmplat_cfg.heap.start,
+		   (__paddr_t)_libkvmplat_cfg.heap.end,
+		   _libkvmplat_cfg.heap.len);
+
+	frames = _libkvmplat_cfg.heap.len >> PAGE_SHIFT;
+
+	rc = ukplat_page_map(&kernel_pt, _libkvmplat_cfg.heap.start,
+			     __PADDR_ANY, frames, PAGE_ATTR_PROT_RW, 0);
+	if (unlikely(rc))
+		goto EXIT_FATAL;
+
+	/* Forget about heap2 */
+	_libkvmplat_cfg.heap2.start = 0;
+	_libkvmplat_cfg.heap2.end = 0;
+	_libkvmplat_cfg.heap2.len = 0;
+
+	/* Setup and map boot stack */
+	_libkvmplat_cfg.bstack.start = _libkvmplat_cfg.heap.end;
+	_libkvmplat_cfg.bstack.end = _libkvmplat_cfg.heap.end + __STACK_SIZE;
+	_libkvmplat_cfg.bstack.len =
+	    _libkvmplat_cfg.bstack.end - _libkvmplat_cfg.bstack.start;
+
+	frames = _libkvmplat_cfg.bstack.len >> PAGE_SHIFT;
+
+	rc = ukplat_page_map(&kernel_pt, _libkvmplat_cfg.bstack.start,
+			     __PADDR_ANY, frames, PAGE_ATTR_PROT_RW, 0);
+	if (unlikely(rc))
+		goto EXIT_FATAL;
+
+	return;
+EXIT_FATAL:
+	UK_CRASH("Failed to initialize paging (code: %d)\n", -rc);
+}
+#else /* CONFIG_PAGING */
+#define _init_paging()                                                       \
+	do {                                                                   \
+	} while (0)
+#endif /* CONFIG_PAGING */
 
 static void _libkvmplat_entry2(void *arg __attribute__((unused)))
 {
@@ -184,15 +358,6 @@ static void _libkvmplat_entry2(void *arg __attribute__((unused)))
 void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 {
 	_init_dtb(dtb_pointer);
-
-	/* Setup the page tables at the end of the DTB and start the MMU */
-	_libkvmplat_cfg.pagetable.start =
-	    ALIGN_UP(__END + fdt_totalsize(_libkvmplat_cfg.dtb), __PAGE_SIZE);
-	_libkvmplat_cfg.pagetable.len =
-	    _setup_pagetables((void *)_libkvmplat_cfg.pagetable.start);
-	_libkvmplat_cfg.pagetable.end =
-	    _libkvmplat_cfg.pagetable.start + _libkvmplat_cfg.pagetable.len;
-	_start_mmu();
 
 	/* Setup the NS16550 serial UART */
 	ns16550_console_init(_libkvmplat_cfg.dtb);
@@ -208,8 +373,8 @@ void _libkvmplat_start(void *opaque __unused, void *dtb_pointer)
 
 	intctrl_init();
 
-	uk_pr_info("pagetable start: %p\n",
-		   (void *)_libkvmplat_cfg.pagetable.start);
+	_init_paging();
+
 	uk_pr_info("     heap start: %p\n", (void *)_libkvmplat_cfg.heap.start);
 	uk_pr_info("      stack top: %p\n",
 		   (void *)_libkvmplat_cfg.bstack.start);
