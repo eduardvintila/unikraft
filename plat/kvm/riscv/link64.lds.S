@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
- *			Eduard Vintila <eduard.vintila47@gmail.com>
+ *          Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
@@ -33,7 +33,11 @@
  */
 #include <uk/plat/common/common.lds.h>
 
-#define RAM_BASE_ADDR 0x80200000
+/* RAM base address for many RISCV64 platforms, including QEMU */
+#define RAM_BASE_ADDR 0x80000000
+
+/* Reserve at most 2MB of space for SBI firmware */
+#define SBI_RESERVED_SIZE 0x200000
 
 OUTPUT_ARCH(riscv)
 ENTRY(_libkvmplat_entry)
@@ -41,6 +45,13 @@ ENTRY(_libkvmplat_entry)
 SECTIONS {
 	. = RAM_BASE_ADDR;
 	_start_ram_addr = .;
+	/*
+	 * TODO: An SBI firmware is loaded at RAM_BASE_ADDR only when executing
+	 * in a baremetal/emulated environment. When Unikraft is running as a KVM guest,
+	 * the SBI implementation is found at the hypervisor level, so in that case
+	 * we should not reserve any space for a firmware.
+	 */
+	. = RAM_BASE_ADDR + SBI_RESERVED_SIZE;
 
 	/* Code */
 	_text = .;

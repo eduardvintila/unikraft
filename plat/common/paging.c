@@ -51,6 +51,8 @@
 #define __PLAT_CMN_ARCH_PAGING_H__
 #ifdef CONFIG_ARCH_X86_64
 #include <x86/paging.h>
+#elif CONFIG_ARCH_RISCV_64
+#include <riscv/paging.h>
 #else
 #error "Architecture not supported by paging API"
 #endif
