@@ -65,6 +65,10 @@
 /* Time counter */
 #define CSR_TIME 0xc01
 
+/* Trap handling modes */
+#define STVEC_MODE_DIRECT 0x0
+#define STVEC_MODE_VECTORED 0x1
+
 /* IRQs */
 #define IRQ_S_SOFT 1
 #define IRQ_S_TIMER 5
@@ -96,5 +100,8 @@
 #define CAUSE_VIRTUAL_INST_FAULT 0x16
 #define CAUSE_STORE_GUEST_PAGE_FAULT 0x17
 #define CAUSE_INTERRUPT (_UL(1) << (__riscv_xlen - 1))
+#define CAUSE_SUPERVISOR_SOFT (CAUSE_INTERRUPT | IRQ_S_SOFT)
+#define CAUSE_SUPERVISOR_TIMER (CAUSE_INTERRUPT | IRQ_S_TIMER)
+#define CAUSE_SUPERVISOR_EXT (CAUSE_INTERRUPT | IRQ_S_EXT)
 
 #endif

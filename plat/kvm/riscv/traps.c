@@ -44,7 +44,7 @@
 
 extern void __trap_handler(void);
 
-void do_unknown_exception(struct __regs *regs, unsigned long scause)
+static void do_unknown_exception(struct __regs *regs, unsigned long scause)
 {
 	unsigned long stval = _csr_read(CSR_STVAL);
 
@@ -55,7 +55,7 @@ void do_unknown_exception(struct __regs *regs, unsigned long scause)
 	UK_CRASH("Crashing...\n");
 }
 
-void do_page_fault(struct __regs *regs, unsigned long scause __unused)
+static void do_page_fault(struct __regs *regs, unsigned long scause __unused)
 {
 	unsigned long stval = _csr_read(CSR_STVAL);
 
@@ -70,25 +70,27 @@ void _trap_handler(struct __regs *regs)
 {
 	unsigned long scause = _csr_read(CSR_SCAUSE);
 
-	if (scause & CAUSE_INTERRUPT) {
-		if (scause == (CAUSE_INTERRUPT | IRQ_S_EXT))
-			plic_handle_irq();
-		else if (scause == (CAUSE_INTERRUPT | IRQ_S_TIMER))
-			/*
-			 * Timer interrupts are not routed through the PLIC, so
-			 * call _ukplat_irq_handle directly.
-			 */
-			_ukplat_irq_handle(0);
-		else
-			/* Software interrupt */
-			do_unknown_exception(regs, scause);
-	} else {
-		if (scause == CAUSE_LOAD_PAGE_FAULT
-		    || scause == CAUSE_STORE_PAGE_FAULT
-		    || scause == CAUSE_FETCH_PAGE_FAULT)
-			do_page_fault(regs, scause);
-		else
-			do_unknown_exception(regs, scause);
+	switch (scause) {
+	case CAUSE_SUPERVISOR_EXT:
+		plic_handle_irq();
+		break;
+
+	case CAUSE_SUPERVISOR_TIMER:
+		/*
+		 * Timer interrupts are not routed through the PLIC, so
+		 * call _ukplat_irq_handle directly.
+		 */
+		_ukplat_irq_handle(0);
+		break;
+
+	case CAUSE_LOAD_PAGE_FAULT:
+	case CAUSE_STORE_PAGE_FAULT:
+	case CAUSE_FETCH_PAGE_FAULT:
+		do_page_fault(regs, scause);
+		break;
+
+	default:
+		do_unknown_exception(regs, scause);
 	}
 }
 
@@ -96,11 +98,11 @@ void _init_traps(void)
 {
 	uintptr_t handler = (uintptr_t)&__trap_handler;
 
-	_csr_write(CSR_STVEC, handler);
+	_csr_write(CSR_STVEC, (handler | STVEC_MODE_DIRECT));
 
-	uk_pr_info("sscratch: 0x%lx\n", _csr_read(CSR_SSCRATCH));
-	uk_pr_info("sip: 0x%lx\n", _csr_read(CSR_SIP));
-	uk_pr_info("sie: 0x%lx\n", _csr_read(CSR_SIE));
-	uk_pr_info("sstatus: 0x%lx\n", _csr_read(CSR_SSTATUS));
-	uk_pr_info("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
+	uk_pr_debug("sscratch: 0x%lx\n", _csr_read(CSR_SSCRATCH));
+	uk_pr_debug("sip: 0x%lx\n", _csr_read(CSR_SIP));
+	uk_pr_debug("sie: 0x%lx\n", _csr_read(CSR_SIE));
+	uk_pr_debug("sstatus: 0x%lx\n", _csr_read(CSR_SSTATUS));
+	uk_pr_debug("stvec: 0x%lx\n", _csr_read(CSR_STVEC));
 }
