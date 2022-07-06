@@ -101,9 +101,49 @@ static inline void ioreg_write64(const volatile __u64 *address, __u64 value)
 	asm volatile("sd %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
-static inline void save_extregs(struct sw_ctx *ctx __unused) {} // TODO: Save FPU regs?
+#ifdef CONFIG_FPSIMD
+struct fpsimd_state {
+	__u64 regs[32];
+	__u32 fcsr;
+	/* There's no SIMD on RISC-V, yet */
+};
 
-static inline void restore_extregs(struct sw_ctx *ctx __unused) {}
+extern void fpsimd_save_state(uintptr_t ptr);
+extern void fpsimd_restore_state(uintptr_t ptr);
+
+static inline void save_extregs(struct sw_ctx *ctx)
+{
+	fpsimd_save_state(ctx->extregs);
+}
+
+static inline void restore_extregs(struct sw_ctx *ctx)
+{
+	fpsimd_restore_state(ctx->extregs);
+}
+
+static inline void arch_init_extregs(struct sw_ctx *ctx)
+{
+	if (ctx)
+		ctx->extregs = (uintptr_t)ctx->_extregs;
+
+	uk_pr_debug("Allocating %lu + %lu bytes for sw ctx at %p, extregs at %p\n",
+		sizeof(struct sw_ctx), sizeof(struct fpsimd_state),
+		ctx, (void *)ctx->extregs);
+}
+
+static inline __sz arch_extregs_size(void)
+{
+	return sizeof(struct fpsimd_state);
+}
+
+#else /* !CONFIG_FPSIMD */
+static inline void save_extregs(struct sw_ctx *ctx __unused)
+{
+}
+
+static inline void restore_extregs(struct sw_ctx *ctx __unused)
+{
+}
 
 static inline void arch_init_extregs(struct sw_ctx *ctx)
 {
@@ -115,6 +155,7 @@ static inline __sz arch_extregs_size(void)
 {
 	return 0;
 }
+#endif /* CONFIG_FPSIMD */
 
 #define _csr_swap(csr, val)                                                    \
 	({                                                                     \
