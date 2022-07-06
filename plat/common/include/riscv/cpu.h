@@ -49,8 +49,6 @@
 void halt(void);
 void system_off(void);
 
-/* TODO: Is inline assembly necessary? */
-
 static inline __u8 ioreg_read8(const volatile __u8 *address)
 {
 	__u8 value;
@@ -103,20 +101,7 @@ static inline void ioreg_write64(const volatile __u64 *address, __u64 value)
 	asm volatile("sd %0, 0(%1)" : : "rZ"(value), "r"(address));
 }
 
-/* TODO: Explain yourself. mul64_32 or mul64_64? */
-static inline __u64 mul64_32(__u64 a, __u64 b)
-{
-	__u64 mul_high, mul_low;
-
-	__asm__("mulhu %[rdh], %[rs1], %[rs2]\n\t"
-		"mul %[rdl], %[rs1], %[rs2]\n\t"
-		: [rdh] "=&r"(mul_high), [rdl] "=&r"(mul_low)
-		: [rs1] "r"(a), [rs2] "r"(b));
-
-	return (__u64)((mul_high << 32) | (mul_low >> 32));
-}
-
-static inline void save_extregs(struct sw_ctx *ctx __unused) {}
+static inline void save_extregs(struct sw_ctx *ctx __unused) {} // TODO: Save FPU regs?
 
 static inline void restore_extregs(struct sw_ctx *ctx __unused) {}
 
