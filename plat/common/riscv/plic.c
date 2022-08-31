@@ -35,7 +35,7 @@
 #include <uk/print.h>
 #include <uk/assert.h>
 #include <riscv/irq.h>
-#include <kvm/irq.h>
+#include <uk/plat/common/irq.h>
 #include <ofw/fdt.h>
 
 /* PLIC memory map */

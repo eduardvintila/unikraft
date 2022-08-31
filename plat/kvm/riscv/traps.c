@@ -37,7 +37,7 @@
 #include <uk/assert.h>
 #include <uk/print.h>
 #include <kvm/config.h>
-#include <kvm/irq.h>
+#include <uk/plat/common/irq.h>
 #include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
 #include <riscv/plic.h>
