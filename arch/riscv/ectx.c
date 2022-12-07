@@ -1,8 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Florian Schmidt <florian.schmidt@neclab.eu>
+ *          Simon Kuenzer <simon.kuenzer@neclab.eu>
+ *          Robert Kuban <robert.kuban@opensynergy.com>
  *
- * Copyright (c) 2019, University Politehnica of Bucharest. All rights reserved.
+ * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2021, NEC Laboratories Europe GmbH, NEC Corporation.
+ *                     All rights reserved.
+ * Copyright (c) 2022, OpenSynergy GmbH All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +34,53 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include <uk/arch/ctx.h>
+#include <uk/arch/lcpu.h>
+#include <uk/arch/types.h>
+#include <uk/ctors.h>
 #include <uk/essentials.h>
+#include <uk/assert.h>
+#include <uk/print.h>
+#include <string.h> /* memset */
+#include <riscv/cpu.h>
 
-void ukplat_stack_set_current_thread(void *thread_addr __unused)
+__sz ukarch_ectx_size(void)
 {
+	return sizeof(struct fpsimd_state);
+}
+
+/* TODO: find good alignment for ectx on RISC-V*/
+#define ECTX_ALIGN 16
+
+__sz ukarch_ectx_align(void)
+{
+	return ECTX_ALIGN;
+}
+
+void ukarch_ectx_init(struct ukarch_ectx *state)
+{
+	UK_ASSERT(state);
+	UK_ASSERT(IS_ALIGNED((__uptr) state, ECTX_ALIGN));
+
+	/* Initialize extregs area:
+	 * Zero out and then save a valid layout to it.
+	 */
+	memset(state, 0, sizeof(struct fpsimd_state));
+	ukarch_ectx_store(state);
+}
+
+void ukarch_ectx_store(struct ukarch_ectx *state)
+{
+	UK_ASSERT(state);
+	UK_ASSERT(IS_ALIGNED((__uptr) state, ECTX_ALIGN));
+
+	save_extregs(state);
+}
+
+void ukarch_ectx_load(struct ukarch_ectx *state)
+{
+	UK_ASSERT(state);
+	UK_ASSERT(IS_ALIGNED((__uptr) state, ECTX_ALIGN));
+
+	restore_extregs(state);
 }

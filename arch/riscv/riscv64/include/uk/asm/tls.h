@@ -50,7 +50,7 @@ static inline __sz ukarch_tls_area_size(void)
 	/* The RISC-V ABI uses Variant I as described by the ELF TLS
 	 * specification.
 	 */
-	return _tls_end - _tls_start + TCB_SIZE;
+	return _tls_end - _tls_start;
 }
 
 static inline __sz ukarch_tls_area_align(void)
@@ -58,6 +58,7 @@ static inline __sz ukarch_tls_area_align(void)
 	return 8;
 }
 
+/*
 static inline void ukarch_tls_area_copy(void *tls_area)
 {
 	__sz tls_data_len = _etdata - _tls_start;
@@ -67,8 +68,9 @@ static inline void ukarch_tls_area_copy(void *tls_area)
 	memcpy(tls_area + TCB_SIZE, _tls_start, tls_data_len);
 	memset(tls_area + tls_data_len + TCB_SIZE, 0, tls_bss_len);
 }
+*/
 
-static inline void *ukarch_tls_pointer(void *tls_area)
+static inline __uptr ukarch_tls_pointer(void *tls_area)
 {
 	/* As per the RISC-V ABI spec, $tp contains the address one past the end
 	 * of the TCB

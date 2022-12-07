@@ -13,6 +13,8 @@ COMPFLAGS    += -fno-stack-protector
 endif
 COMPFLAGS    += -Wall -Wextra
 
+COMPFLAGS += -save-temps=obj
+
 ASFLAGS      += -D__ASSEMBLY__
 
 ASINCLUDES   += -I$(CONFIG_UK_BASE)/include

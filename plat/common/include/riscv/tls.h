@@ -30,6 +30,17 @@
 #ifndef __PLAT_CMN_RISCV_TLS_H__
 #define __PLAT_CMN_RISCV_TLS_H__
 
-#define set_tls_pointer(ptr) __asm__("mv tp, %0" : : "r"(ptr))
+#define get_tls_pointer() \
+	({                                                           \
+		register unsigned long __tp;                         \
+		__asm__ __volatile__("mv %0, tp"                     \
+				     : "=r"(__tp)                     \
+				     :                               \
+				     : "memory");                    \
+		__tp;                                                 \
+	})
+
+#define set_tls_pointer(ptr) \
+	__asm__ __volatile__("mv tp, %0" : : "r"(ptr) : "memory")
 
 #endif /* __PLAT_CMN_RISCV_TLS_H__ */

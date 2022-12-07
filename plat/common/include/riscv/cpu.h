@@ -1,17 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Authors: Wei Chen <wei.chen@arm.com>
- *			Eduard Vintila <eduard.vintila47@gmail.com>
+ *	    Eduard Vintila <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2018, Arm Ltd. All rights reserved.
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
- * CSR ops are taken from OpenSBI:
- *
- * Copyright (c) 2019 Western Digital Corporation or its affiliates.
- *
- * Authors:
- *   Anup Patel <anup.patel@wdc.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +38,6 @@
 
 #include <uk/essentials.h>
 #include <uk/arch/types.h>
-#include <uk/plat/common/sw_ctx.h>
 
 void halt(void);
 void system_off(void);
@@ -59,48 +52,27 @@ struct fpsimd_state {
 extern void fpsimd_save_state(uintptr_t ptr);
 extern void fpsimd_restore_state(uintptr_t ptr);
 
-static inline void save_extregs(struct sw_ctx *ctx)
+static inline void save_extregs(void *ectx)
 {
-	fpsimd_save_state(ctx->extregs);
+	fpsimd_save_state((uintptr_t) ectx);
 }
 
-static inline void restore_extregs(struct sw_ctx *ctx)
+static inline void restore_extregs(void *ectx)
 {
-	fpsimd_restore_state(ctx->extregs);
-}
-
-static inline void arch_init_extregs(struct sw_ctx *ctx)
-{
-	if (ctx)
-		ctx->extregs = (uintptr_t)ctx->_extregs;
-
-	uk_pr_debug("Allocating %lu + %lu bytes for sw ctx at %p, extregs at %p\n",
-		sizeof(struct sw_ctx), sizeof(struct fpsimd_state),
-		ctx, (void *)ctx->extregs);
-}
-
-static inline __sz arch_extregs_size(void)
-{
-	return sizeof(struct fpsimd_state);
+	fpsimd_restore_state((uintptr_t) ectx);
 }
 
 #else /* !CONFIG_FPSIMD */
-static inline void save_extregs(struct sw_ctx *ctx __unused)
+
+struct fpsimd_state { };
+
+static inline void save_extregs(void *ectx __unused)
 {
 }
 
-static inline void restore_extregs(struct sw_ctx *ctx __unused)
+static inline void restore_extregs(void *ectx __unused)
 {
-}
-
-static inline void arch_init_extregs(struct sw_ctx *ctx)
-{
-	if (ctx)
-		ctx->extregs = (uintptr_t)ctx->_extregs;
-}
-
-static inline __sz arch_extregs_size(void)
-{
-	return 0;
 }
 #endif /* CONFIG_FPSIMD */
+
+#endif

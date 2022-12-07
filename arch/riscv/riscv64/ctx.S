@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
- *	    Eduard Vintila <eduard.vintila47@gmail.com>
+ * Authors: Wei Chen <wei.chen@riscv.com>
+ *          Robert Kuban <robert.kuban@opensynergy.com>
+ *	    Eduard Vintilă <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, Arm Ltd. All rights reserved.
+ * Copyright (c) 2018, riscv Ltd. All rights reserved.
+ * Copyright (c) 2022, OpenSynergy GmbH. All rights reserved.
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,64 +33,87 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-//#include <uk/arch/ctx.h>
+
+#include <uk/arch/ctx.h>
 #include <uk/arch/lcpu.h>
 #include <uk/asm.h>
 
 /*
- * Thread stack memory layout:
- *
- * |-----------------------------| --> SP
- * |    arguments      		 | In init_sp, we have pushed thread main
- * |-----------------------------| function and arguments to stackfunction
- * |    thread main function     | and arguments to stack.
- * |-----------------------------| --> ctx->sp = SP - function - arguments
- * |    Reversed room for riscv64|
- * |    Callee saved registers:  |
- * |    s1 ~ s11                 |
- * |-----------------------------|
- * |    s0=fp (frame pointer)    |
- * |-----------------------------|
- * |    ...                      |
- * |    ...                      |
- * |-----------------------------|
- * |    thread                   | --> used for uk_thread_current
- * |-----------------------------|
+ * NOTE: If we use the SP for single registers, we need to decrease the
+ *       SP 16 bytes for single registers.
+ * WARNING: Changes here need also be reflected in uk/asm/ctx.h
+ * TODO: vezi daca mai trebuie sa setezi vreun registru cu 0
  */
+
+ENTRY(_ctx_riscv_clearregs)
+	/* wipe argument and return registers */
+	mv x10, x0
+	mv x11, x0
+	mv x12, x0
+	mv x13, x0
+	mv x14, x0
+	mv x15, x0
+	mv x16, x0
+	mv x17, x0
+
+	/* wipe callee-saved registers (old comment)
+	   wipe temp registers  */
+	mv x5, x0
+	mv x6, x0
+	mv x7, x0
+	mv x28, x0
+	mv x29, x0
+	mv x30, x0
+	mv x31, x0
+#if __OMIT_FRAMEPOINTER__
+	mv x8, x0 /* don't wipe if x8 is used as frame pointer */
+#endif /* __OMIT_FRAMEPOINTER__ */
+
+	/* jump to entrance function left on stack */
+	ld ra, 0(sp)
+	addi sp, sp, 16
+	ret
+
+ENTRY(_ctx_riscv_call0)
+#if !__OMIT_FRAMEPOINTER__
+	mv fp, x0 /* reset frame pointer */
+#endif /* !__OMIT_FRAMEPOINTER__ */
+	/* jump to entrance function left on stack */
+	ld ra, 0(sp)
+	addi sp, sp, 16
+	ret
+
+ENTRY(_ctx_riscv_call1)
+#if !__OMIT_FRAMEPOINTER__
+	mv fp, x0 /* reset frame pointer */
+#endif /* !__OMIT_FRAMEPOINTER__ */
+	ld a0, 0(sp)
+	/* jump to entrance function left on stack */
+	ld ra, 16(sp)
+	addi sp, sp, 32
+	ret
+
+ENTRY(_ctx_riscv_call2)
+#if !__OMIT_FRAMEPOINTER__
+	mv fp, x0 /* reset frame pointer */
+#endif /* !__OMIT_FRAMEPOINTER__ */
+	ld a0, 0(sp)
+	ld a1, 16(sp)
+	/* jump to entrance function left on stack */
+	ld ra, 32(sp)
+	addi sp, sp, 48
+	ret
 
 /*
- * This function will jump to thread main function and set up
- * thread exit handler.
+ * Switch context on the current LCPU.
  */
-ENTRY(asm_thread_starter)
-	ld a0, 0(sp) /* Load args to a0 */
-	ld a1, 8(sp) /* Load func to a1 */
-	addi sp, sp, 16 /* Pop args and func */
-	jr a1 /* Jump to thread main func */
-	call uk_sched_thread_exit
-ENDPROC(asm_thread_starter)
-
-/*
- * a0 = ctx->sp
- * a1 = ctx->ip = asm_thread_starter
- *
- * This function will set the SP to thread's SP and jump to
- * ctx->ip: asm_thread_starter
- */
-ENTRY(asm_ctx_start)
-	mv sp, a0	/* set SP */
-	jr a1		/* jump to asm_thread_starter */
-ENDPROC(asm_ctx_start)
-
-/*
- * a0 = prectx
- * a1 = nextctx
- * This function will switch to the next thread context
- */
-ENTRY(asm_sw_ctx_switch)
-
-	/* Save callee-saved registers to prevctx's stack */
-	addi sp, sp, -13 * REGBYTES
+ENTRY(ukarch_ctx_switch)
+	/* Save callee-saved registers to prevctx's stack.
+	 *
+	 * Even though we save only 13 registers, we reserve space for
+	 * 16 of them such that we can keep sp's 16-byte alignment.
+	 */
+	addi sp, sp, -__CALLEE_SAVED_SIZE
 	sd ra, 12*REGBYTES(sp)
 	sd s11, 11*REGBYTES(sp)
 	sd s10, 10*REGBYTES(sp)
@@ -105,14 +130,15 @@ ENTRY(asm_sw_ctx_switch)
 
 	/* Save sp and restore point to previous context */
 	la t0, restore_point
-	sd t0, OFFSETOF_SW_CTX_IP(a0)
-	sd sp, OFFSETOF_SW_CTX_SP(a0)
+	sd t0, UKARCH_CTX_OFFSETOF_IP(a0)
+	sd sp, UKARCH_CTX_OFFSETOF_SP(a0)
 
 	/* Restore sp and restore point from next context */
-	ld ra, OFFSETOF_SW_CTX_IP(a1)
-	ld sp, OFFSETOF_SW_CTX_SP(a1)
+	ld ra, UKARCH_CTX_OFFSETOF_IP(a1)
+	ld sp, UKARCH_CTX_OFFSETOF_SP(a1)
 
 	ret
+
 restore_point:
 	/* Restore the callee-saved registers */
 	ld ra, 12*REGBYTES(sp)
@@ -128,7 +154,7 @@ restore_point:
 	ld s2, 2*REGBYTES(sp)
 	ld s1, 1*REGBYTES(sp)
 	ld s0, 0*REGBYTES(sp)
-	addi sp, sp, 13 * REGBYTES
+	addi sp, sp, __CALLEE_SAVED_SIZE
 
 	ret
-ENDPROC(asm_sw_ctx_switch)
+

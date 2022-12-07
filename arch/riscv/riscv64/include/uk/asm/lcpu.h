@@ -4,6 +4,13 @@
  *
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
+ * CSR ops are taken from OpenSBI:
+ *
+ * Copyright (c) 2019 Western Digital Corporation or its affiliates.
+ *
+ * Authors:
+ *   Anup Patel <anup.patel@wdc.com>
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -39,6 +46,8 @@
 #define REGBYTES 8
 
 #define CACHE_LINE_SIZE	64
+
+#define __CALLEE_SAVED_SIZE    REGBYTES * 16
 
 #ifndef __ASSEMBLY__
 struct __regs {
