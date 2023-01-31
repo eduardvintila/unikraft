@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
- *          Simon Kuenzer <simon.kuenzer@neclab.eu>
+ * Authors: Florian Schmidt <florian.schmidt@neclab.eu>
+ *			Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
- * Copyright (c) 2021, NEC Laboratories Europe GmbH. NEC Corporation.
- *                     All rights reserved.
+ * Copyright (c) 2019, NEC Laboratories Europe GmbH. All rights reserved.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,27 +32,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <uk/arch/types.h>
-#include <uk/plat/tls.h>
-
-#if defined(LINUXUPLAT) && defined(__X86_64__)
-#include <linuxu/x86/tls.h>
-#elif defined(__X86_64__)
-#include <x86/tls.h>
-#elif defined(__ARM_64__)
-#include <arm/arm64/tls.h>
-#elif defined(__RISCV_64__)
-#include <riscv/tls.h>
-#else
-#error "For thread-local storage support, add tls.h for current architecture."
+#ifndef __UKARCH_TLS_H__
+#error Do not include this header directly
 #endif
 
-__uptr ukplat_tlsp_get(void)
+#warning Thread-local storage has not been tested thoroughly on riscv64!
+
+#include <uk/arch/types.h>
+#include <string.h>
+
+#define TCB_SIZE 0
+
+extern char _tls_start[], _etdata[], _tls_end[];
+
+static inline __sz ukarch_tls_area_size(void)
 {
-	return (__uptr) get_tls_pointer();
+	/* The RISC-V ABI uses Variant I as described by the ELF TLS
+	 * specification.
+	 */
+	return _tls_end - _tls_start;
 }
 
-void ukplat_tlsp_set(__uptr tlsp)
+static inline __sz ukarch_tls_area_align(void)
 {
-	set_tls_pointer(tlsp);
+	return 8;
+}
+
+/*
+static inline void ukarch_tls_area_copy(void *tls_area)
+{
+	__sz tls_data_len = _etdata - _tls_start;
+	__sz tls_bss_len = _tls_end - _etdata;
+
+	memset(tls_area, 0, TCB_SIZE);
+	memcpy(tls_area + TCB_SIZE, _tls_start, tls_data_len);
+	memset(tls_area + tls_data_len + TCB_SIZE, 0, tls_bss_len);
+}
+*/
+
+static inline __uptr ukarch_tls_pointer(void *tls_area)
+{
+	/* As per the RISC-V ABI spec, $tp contains the address one past the end
+	 * of the TCB
+	 */
+	return tls_area + TCB_SIZE;
 }
