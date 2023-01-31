@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,25 +29,31 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <uk/config.h>
+#include <uk/plat/common/cpu.h>
+#include <riscv/sbi.h>
+#include <riscv/cpu.h>
+#include <riscv/cpu_defs.h>
+#include <uk/assert.h>
 
-#ifndef __PLAT_CMN_IRQ_H__
-#define __PLAT_CMN_IRQ_H__
+/* Halts the CPU until an interrupt is pending */
+void halt(void)
+{
+	/*
+	 * From the RISC-V privileged manual:
+	 *
+	 * "As implementations are free to implement WFI as a NOP,
+	 * software must explicitly check for any relevant pending but disabled
+	 * interrupts in the code following an WFI, and should loop back
+	 * to the WFI if no suitable interrupt was detected."
+	 */
+	while (!_csr_read(CSR_SIP))
+		__asm__ __volatile__("wfi");
+}
 
-/* Saving /restoring CPU IRQ flags and enabling / disabling IRQs on the
- * CPU were previously part of the ukplat_irq API. These are not managed
- * by the interrupt controller, so they need to be part of the lcpu
- * low-level API. As some platforms may have their own implementation of
- * these (linuxu, xen) keep them on a separate header.
- * TODO: Remove this comment after migrating lcpu into drivers.
- */
-#if defined(__X86_64__)
-#include <x86/irq.h>
-#elif defined(__ARM_64__)
-#include <arm/irq.h>
-#elif defined(__RISCV_64__)
-#include <riscv/irq.h>
-#else
-#error "Add irq.h for current architecture."
-#endif
-
-#endif /* __PLAT_CMN_IRQ_H__ */
+void system_off(void)
+{
+	/* Shutdown the system using an SBI call */
+	sbi_system_reset(SBI_SRST_RESET_TYPE_SHUTDOWN,
+			 SBI_SRST_RESET_REASON_NONE);
+}

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Wei Chen <wei.chen@arm.com>
+ * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
  *
- * Copyright (c) 2018, Arm Ltd., All rights reserved.
+ * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,25 +29,18 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef __PLAT_COMMON_RISCV64_PLIC_H__
+#define __PLAT_COMMON_RISCV64_PLIC_H__
+#include <uk/arch/types.h>
+#include <uk/plat/irq.h>
 
-#ifndef __PLAT_CMN_IRQ_H__
-#define __PLAT_CMN_IRQ_H__
+int init_plic(void *dtb);
+void plic_enable_irq(unsigned int irq);
+void plic_disable_irq(unsigned int irq);
+void plic_set_priority(unsigned int irq, __u32 priority);
+void plic_set_priority_threshold(__u32 threshold);
+unsigned int plic_claim(void);
+void plic_complete(unsigned int irq);
+void plic_handle_irq(struct __regs *regs);
 
-/* Saving /restoring CPU IRQ flags and enabling / disabling IRQs on the
- * CPU were previously part of the ukplat_irq API. These are not managed
- * by the interrupt controller, so they need to be part of the lcpu
- * low-level API. As some platforms may have their own implementation of
- * these (linuxu, xen) keep them on a separate header.
- * TODO: Remove this comment after migrating lcpu into drivers.
- */
-#if defined(__X86_64__)
-#include <x86/irq.h>
-#elif defined(__ARM_64__)
-#include <arm/irq.h>
-#elif defined(__RISCV_64__)
-#include <riscv/irq.h>
-#else
-#error "Add irq.h for current architecture."
 #endif
-
-#endif /* __PLAT_CMN_IRQ_H__ */
