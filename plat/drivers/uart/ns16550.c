@@ -31,7 +31,12 @@
 #include <uk/config.h>
 #include <uk/plat/console.h>
 #include <uk/assert.h>
+
+#ifdef CONFIG_ARCH_ARM_64
 #include <arm/cpu.h>
+#elif CONFIG_ARCH_RISCV_64
+#include <riscv/cpu.h>
+#endif
 
 #define NS16550_THR_OFFSET	0x00U
 #define NS16550_RBR_OFFSET	0x00U
@@ -120,7 +125,7 @@ static void init_ns16550(uint64_t base)
 
 	/* Disable all interrupts */
 	ns16550_reg_write(NS16550_IER_OFFSET,
-		ns16550_reg_read(NS16550_FCR_OFFSET) & ~(NS16550_IIR_NO_INT));
+		ns16550_reg_read(NS16550_IER_OFFSET) & ~(NS16550_IIR_NO_INT));
 
 	/* Disable FIFOs */
 	ns16550_reg_write(NS16550_FCR_OFFSET,
