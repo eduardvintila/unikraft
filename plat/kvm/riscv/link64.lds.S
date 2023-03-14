@@ -42,6 +42,16 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_libkvmplat_entry)
 
+PHDRS
+{
+	text PT_LOAD FLAGS(PHDRS_PF_RX);
+	rodata PT_LOAD FLAGS(PHDRS_PF_R);
+	data PT_LOAD;
+	tls PT_TLS;
+	tls_load PT_LOAD;
+	stack PT_GNU_STACK FLAGS(PHDRS_PF_RW);
+}
+
 SECTIONS {
 	. = RAM_BASE_ADDR;
 	_start_ram_addr = .;
@@ -59,16 +69,10 @@ SECTIONS {
 	{
 		*(.text)
 		*(.text.*)
-	}
+	} :text
 
 	. = ALIGN(__PAGE_SIZE);
 	_etext = .;
-
-	EXCEPTION_SECTIONS
-
-	CTORTAB_SECTION
-
-	INITTAB_SECTION
 
 	/* Read-only data */
 	. = ALIGN(__PAGE_SIZE);
@@ -77,7 +81,16 @@ SECTIONS {
 	{
 		*(.rodata)
 		*(.rodata.*)
-	}
+	} :rodata
+
+	EXCEPTION_SECTIONS
+
+	CTORTAB_SECTION
+
+	INITTAB_SECTION
+
+	EVENTTAB_SECTION
+
 	_erodata = .;
 
 	/* Constructor tables (read-only) */
@@ -102,26 +115,7 @@ SECTIONS {
 
 	TLS_SECTIONS
 
-	/* Read-write data that is initialized explicitly in code */
-	_data = .;
-	.data :
-	{
-		*(.data)
-		*(.data.*)
-	}
-	. = ALIGN(__PAGE_SIZE);
-	_edata = .;
-
-	__bss_start = .;
-	/* Read-write data that is not initialized explicitly in code */
-	.bss :
-	{
-		*(.bss)
-		*(.bss.*)
-		*(.sbss)
-		*(COMMON)
-		. = ALIGN(__PAGE_SIZE);
-	}
+	DATA_SECTIONS
 
 	_end = .;
 

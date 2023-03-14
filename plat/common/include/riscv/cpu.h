@@ -38,6 +38,7 @@
 
 #include <uk/essentials.h>
 #include <uk/arch/types.h>
+#include <stdint.h>
 
 void halt(void);
 void system_off(void);
