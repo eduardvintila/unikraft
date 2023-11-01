@@ -34,6 +34,7 @@
 #include <uk/asm.h>
 #include <uk/asm/arch.h>
 #include <uk/config.h>
+#include <uk/essentials.h>
 
 #define CACHE_LINE_SIZE		64
 
@@ -166,7 +167,6 @@ static __attribute__((unused))
 unsigned char tcr_ips_bits[] = {32, 36, 40, 42, 44, 48, 52};
 #endif
 
-#ifdef __ASSEMBLY__
 /*
  * Stack size to save general purpose registers and essential system
  * registers. 8 * (30 + lr + elr_el1 + spsr_el1 + esr_el1) = 272.
@@ -185,9 +185,11 @@ unsigned char tcr_ips_bits[] = {32, 36, 40, 42, 44, 48, 52};
  * thread stack:
  * http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
  */
+#define __REGS_SIZEOF          __TRAP_STACK_SIZE
+#define __REGS_PAD_SIZE        8	/* No padding for ARM64 */
 #define __CALLEE_SAVED_SIZE    96
 
-#else
+#if !__ASSEMBLY__
 
 #include <stdint.h>
 
@@ -218,6 +220,8 @@ struct __regs {
 	__u8 pad[8];
 };
 
+UK_CTASSERT(sizeof(struct __regs) == __REGS_SIZEOF);
+
 /*
  * Change this structure must update __CALLEE_SAVED_SIZE at the
  * same time.
@@ -232,6 +236,8 @@ struct __callee_saved_regs {
 	/* Link Register (x30) */
 	uint64_t lr;
 };
+
+UK_CTASSERT(sizeof(struct __callee_saved_regs) == __CALLEE_SAVED_SIZE);
 
 /*
  * Instruction Synchronization Barrier flushes the pipeline in the
@@ -374,4 +380,4 @@ static inline void ukarch_spinwait(void)
 	/* Intelligent busy wait not supported on arm64. */
 }
 
-#endif /* __ASSEMBLY__ */
+#endif /* !__ASSEMBLY__ */

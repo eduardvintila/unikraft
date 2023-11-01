@@ -105,6 +105,12 @@ extern "C" {
 #ifndef __fallthrough
 #define __fallthrough          __attribute__((fallthrough))
 #endif
+/* NOTE: naked attribute is not yet defined for AArch64 and would generate a
+ * warning.
+ */
+#ifndef __naked
+#define __naked                __attribute__((naked))
+#endif
 
 #ifndef __alias
 #define __alias(old, new) \
@@ -354,6 +360,10 @@ extern "C" {
 #define UK_NARGS(...) \
 	__UK_NARGS_X(, ##__VA_ARGS__, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, \
 		     15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define UK_NARGS_HALF(...) \
+	__UK_NARGS_X(, ##__VA_ARGS__, 12, 12, 11, 11, 10, 10, 9, 9, 8, 8, \
+		     7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0)
+
 #endif /* UK_NARGS */
 
 #ifdef __cplusplus
