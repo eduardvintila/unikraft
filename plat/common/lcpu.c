@@ -59,7 +59,7 @@
  * for non-present CPUs and does not force us to configure the maximum number
  * of CPUs beforehand.
  */
-struct lcpu lcpus[CONFIG_UKPLAT_LCPU_MAXCOUNT];
+UKPLAT_PER_LCPU_DEFINE(struct lcpu, lcpus);
 
 #ifdef CONFIG_HAVE_SMP
 /**
@@ -96,6 +96,11 @@ __u32 ukplat_lcpu_count(void)
  * not support multi-processor configurations.
  */
 __lcpuid __weak lcpu_arch_id(void)
+{
+	return 0;
+}
+
+__lcpuidx __weak lcpu_arch_idx(void)
 {
 	return 0;
 }
@@ -191,44 +196,30 @@ void ukplat_lcpu_halt_irq_until(__nsec until)
 	time_block_until(until);
 }
 
-__lcpuid ukplat_lcpu_id(void)
+__uptr ukplat_lcpu_get_auxsp(void)
 {
-	return lcpu_arch_id();
+	UK_ASSERT(IS_LCPU_PTR(lcpu_get_current()));
+
+	return lcpu_get_current()->auxsp;
+}
+
+void ukplat_lcpu_set_auxsp(__uptr auxsp)
+{
+	UK_ASSERT(IS_LCPU_PTR(lcpu_get_current()));
+
+	lcpu_get_current()->auxsp = auxsp;
 }
 
 #ifdef CONFIG_HAVE_SMP
-#ifdef CONFIG_UKPLAT_LCPU_IDISIDX
-/* For many VMMs the CPU ID is simply a sequentially increasing number with
- * the BSP always at index 0. This is essentially the definition of __lcpuidx
- * so in this case, we can simply use the ID as IDX.
- */
+__lcpuid ukplat_lcpu_id(void)
+{
+	return lcpu_get_current()->id;
+}
+
 __lcpuidx ukplat_lcpu_idx(void)
 {
-	__lcpuidx this_cpu_idx = (__lcpuidx) ukplat_lcpu_id();
-
-	UK_ASSERT(this_cpu_idx < lcpu_count);
-	UK_ASSERT(lcpus[this_cpu_idx].idx == this_cpu_idx);
-	return this_cpu_idx;
+	return lcpu_arch_idx();
 }
-#else /* CONFIG_UKPLAT_LCPU_IDISIDX */
-__lcpuidx ukplat_lcpu_idx(void)
-{
-	__lcpuid this_cpu_id  = ukplat_lcpu_id();
-	__u32 i, this_cpu_idx = (__u32) (-1);
-
-	/** TODO: Until we have a better way just do a linear search */
-	for (i = 0; i < lcpu_count; i++)
-		if (lcpus[i].id == this_cpu_id) {
-			UK_ASSERT(lcpus[i].idx == (__lcpuidx) i);
-			this_cpu_idx = i;
-			break;
-		}
-
-	UK_ASSERT(this_cpu_idx != (__u32) (-1));
-
-	return (__lcpuidx) this_cpu_idx;
-}
-#endif /* CONFIG_UKPLAT_LCPU_IDISIDX */
 
 int lcpu_fn_enqueue(struct lcpu *lcpu, const struct ukplat_lcpu_func *fn)
 {

@@ -31,6 +31,15 @@
 #error Do not include this header directly
 #endif
 
+/* 512 for the actual structure + 64 bytes for the XSAVE header */
+#define UKARCH_ECTX_SAVE_MAX_SIZE			576
+#define UKARCH_ECTX_SAVE_MAX_ALIGN			64
+
+#define UKARCH_SP_ALIGN		(1 << 4)
+#define UKARCH_SP_ALIGN_MASK	(UKARCH_SP_ALIGN - 1)
+
+#if !__ASSEMBLY__
+
 #define ukarch_rstack_push(sp, value)			\
 	({						\
 		unsigned long __sp__ = (sp);		\
@@ -42,9 +51,6 @@
 #define ukarch_rstack_push_packed(sp, value)		\
 	ukarch_rstack_push(sp, value)
 
-#define UKARCH_SP_ALIGN		(1 << 4)
-#define UKARCH_SP_ALIGN_MASK	(UKARCH_SP_ALIGN - 1)
-
 #define ukarch_gen_sp(base, len)					\
 	({								\
 		unsigned long __sp__ = (unsigned long) (base)		\
@@ -52,3 +58,4 @@
 		__sp__ &= ~((unsigned long) UKARCH_SP_ALIGN_MASK);	\
 		__sp__;							\
 	})
+#endif /* !__ASSEMBLY__ */

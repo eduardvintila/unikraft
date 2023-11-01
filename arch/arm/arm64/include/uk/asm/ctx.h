@@ -35,9 +35,15 @@
 #error Do not include this header directly
 #endif
 
+/* 32 * 2 * 8 bytes + 4 bytes (FPSR) + 4 bytes (FPCR) */
+#define UKARCH_ECTX_SAVE_MAX_SIZE			520
+#define UKARCH_ECTX_SAVE_MAX_ALIGN			16
+
 /* Stack needs to be aligned to 16 bytes */
 #define UKARCH_SP_ALIGN		16
 #define UKARCH_SP_ALIGN_MASK	(UKARCH_SP_ALIGN - 1)
+
+#if !__ASSEMBLY__
 
 /*
  * NOTE: Since we use the SP for single registers, we need to add some padding.
@@ -71,3 +77,5 @@
 		__sp__ &= ~((unsigned long) UKARCH_SP_ALIGN_MASK);	\
 		__sp__;							\
 	})
+
+#endif /* !__ASSEMBLY__ */
