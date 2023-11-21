@@ -143,9 +143,9 @@ if (KVM_KERNEL_SERIAL_CONSOLE || KVM_DEBUG_SERIAL_CONSOLE)
 
 choice
 	prompt "Serial console driver"
-	depends on ARCH_ARM_64
+	depends on (ARCH_ARM_64 || ARCH_RISCV_64)
 	default UART_PL011 if KVM_VMM_QEMU
-	default UART_NS16550 if KVM_VMM_FIRECRACKER
+	default UART_NS16550 if (KVM_VMM_FIRECRACKER || ARCH_RISCV_64)
 
 config UART_PL011
 	bool "PrimeCell UART (PL011)"

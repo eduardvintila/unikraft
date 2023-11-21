@@ -40,7 +40,7 @@
 #include <uk/plat/common/irq.h>
 #include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
-#include <riscv/plic.h>
+#include <uk/intctlr/plic.h>
 
 extern void __trap_handler(void);
 
@@ -81,9 +81,20 @@ void _trap_handler(struct __regs *regs)
 	case CAUSE_SUPERVISOR_TIMER:
 		/*
 		 * Timer interrupts are not routed through the PLIC, so
-		 * call _ukplat_irq_handle directly.
+		 * call uk_intctlr_irq_handle directly.
 		 */
-		_ukplat_irq_handle(regs, 0);
+		uk_intctlr_irq_handle(regs, 0);
+
+		/*
+		 * From the RISC-V SBI spec: "If the supervisor wishes to clear
+		 * the timer interrupt without scheduling the next timer event,
+		 * it can request a timer interrupt infinitely far into the
+		 * future (i.e., (uint64_t)-1)."
+		 *
+		 * Essentialy this is used to clear the timer interrupt pending
+		 * bit to mark that the interrupt has been acknowledged.
+		 */
+		sbi_set_timer((__u64)-1);
 		break;
 
 	case CAUSE_LOAD_PAGE_FAULT:

@@ -124,18 +124,6 @@ LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/pagetable64.S|is
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/setup.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/lcpu.c
 
-LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/shutdown.c
-LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/memory.c
-LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/io.c
-LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_COMMON_BASE)/lcpu.c|common
-LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_COMMON_BASE)/memory.c|common
-LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_KVM_DEF_LDS)
-LIBKVMPLAT_SRCS-$(CONFIG_UKPLAT_ACPI)      += $(UK_PLAT_COMMON_BASE)/acpi.c|common
-ifeq ($(CONFIG_KVM_BOOT_PROTO_EFI_STUB),y)
-LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/efi.c|common
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/intctrl.c
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBKVMPLAT_BASE)/arm/memory.c
-
 ##
 ## Architecture library definitions for riscv64
 ##
@@ -146,28 +134,28 @@ LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/exceptions.S
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/lcpu.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/time.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/intctrl.c
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(LIBKVMPLAT_BASE)/riscv/memory.c
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/bootinfo.c|common
-
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/cpu_native.c|common
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/timer.c|common
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/plic.c|common
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64)   += $(UK_PLAT_COMMON_BASE)/tls.c|common
-
 ifeq ($(CONFIG_FPSIMD),y)
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/riscv/fp_riscv64.c|isr
 endif
-
 ifeq ($(CONFIG_PAGING),y)
 LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_COMMON_BASE)/paging.c|common
 # Needed for riscv/cpu_* headers included in the riscv64 implementation of asm/paging.h
 LIBUKFALLOCBUDDY_CINCLUDES-y += -I$(UK_PLAT_COMMON_BASE)/include
 endif
 
-ifeq ($(findstring y,$(CONFIG_KVM_KERNEL_SERIAL_CONSOLE) $(CONFIG_KVM_DEBUG_SERIAL_CONSOLE)),y)
-LIBKVMPLAT_SRCS-$(CONFIG_ARCH_RISCV_64) += $(UK_PLAT_DRIVERS_BASE)/uart/ns16550.c
-endif
-
+LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/shutdown.c
+LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/memory.c
+LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/io.c
+LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_COMMON_BASE)/lcpu.c|common
+LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_COMMON_BASE)/memory.c|common
+LIBKVMPLAT_SRCS-y                          += $(UK_PLAT_KVM_DEF_LDS)
+LIBKVMPLAT_SRCS-$(CONFIG_UKPLAT_ACPI)      += $(UK_PLAT_COMMON_BASE)/acpi.c|common
+ifeq ($(CONFIG_KVM_BOOT_PROTO_EFI_STUB),y)
+LIBKVMPLAT_SRCS-y                          += $(LIBKVMPLAT_BASE)/efi.c|common
 endif
 
 LIBKVMPLAT_SRCS-y		 += $(UK_PLAT_COMMON_BASE)/bootinfo.c|common

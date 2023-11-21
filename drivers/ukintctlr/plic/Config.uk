@@ -1,0 +1,5 @@
+config LIBUKINTCTLR_PLIC
+	bool "RISC-V PLIC"
+	depends on ARCH_RISCV_64
+	default y
+	select LIBUKINTCTLR

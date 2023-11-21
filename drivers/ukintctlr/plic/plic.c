@@ -31,12 +31,22 @@
  */
 #include <libfdt.h>
 #include <uk/arch/types.h>
-#include <riscv/cpu.h>
 #include <uk/print.h>
 #include <uk/assert.h>
-#include <riscv/irq.h>
 #include <uk/plat/common/irq.h>
-#include <ofw/fdt.h>
+#include <uk/ofw/fdt.h>
+#include <uk/intctlr.h>
+#include <riscv/cpu.h>
+#include <riscv/irq.h>
+
+static struct uk_intctlr_driver_ops plic_ops = {
+	.configure_irq = plic_configure_ireq
+	.fdt_xlat = plic_fdt_xlat,
+	.mask_irq = plic_mask_irq,
+	.unmask_irq = plic_unmask_irq,
+};
+
+static __paddr_t plic_mmio_base;
 
 /* PLIC memory map */
 #define PLIC_PRIORITIES_OFFSET 0
@@ -70,97 +80,143 @@
 #define PLIC_BOOT_CTX_COMPLETE_OFFSET                                          \
 	(PLIC_COMPLETE_OFFSET + 0x1000 * PLIC_BOOT_CTX)
 
-static __paddr_t plic_mmio_base;
-
 #define PLIC_REG(r) ((__u32 *)(plic_mmio_base + (r)))
 #define PLIC_REG_READ(r) (ioreg_read32(PLIC_REG(r)))
 #define PLIC_REG_WRITE(r, x) (ioreg_write32(PLIC_REG(r), x))
 
 /* Retrieve the base address of the memory mapped PLIC */
-static __paddr_t _dtb_get_plic_base(void *dtb)
+static int plic_probe(void)
 {
+	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	int plic_node, rc;
 	__u64 size;
-	__paddr_t base_addr;
+	void *fdt;
+
+	UK_ASSERT(bi);
+	fdt = (void *)bi->dtb;
 
 	if ((plic_node =
-		 fdt_node_offset_by_compatible(dtb, -1, "sifive,plic-1.0.0"))
+		 fdt_node_offset_by_compatible(fdt, -1, "sifive,plic-1.0.0"))
 		< 0
 	    && (plic_node =
-		    fdt_node_offset_by_compatible(dtb, -1, "riscv,plic0"))
+		    fdt_node_offset_by_compatible(fdt, -1, "riscv,plic0"))
 		   < 0)
-		return (__paddr_t)NULL;
+		return -1;
 
-	rc = fdt_get_address(dtb, plic_node, 0, &base_addr, &size);
+	rc = fdt_get_address(fdt, plic_node, 0, &plic_mmio_base, &size);
 	if (rc < 0)
-		return (__paddr_t)NULL;
+		return -1;
 
-	uk_pr_info("Found RISC-V PLIC at %p\n", (void *)base_addr);
-	return base_addr;
+	uk_pr_info("Found RISC-V PLIC at %p\n", (void *)plic_mmio_base);
+	return 0;
 }
 
-void plic_enable_irq(unsigned int irq)
+static void plic_enable_irq(unsigned int irq)
 {
-	__u32 word_offset = irq >> 3; /* (irq / 32) * sizeof(__u32) */
-	__u8 bit_offset = irq & 31; /* irq % 32 */
-	__u32 mask = 1 << bit_offset;
-	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset);
+	__u32 irq_word_offset = irq >> 3; /* (irq / 32) * sizeof(__u32) */
+	__u8 irq_bit_offset = irq & 31; /* irq % 32 */
+	__u32 mask = 1 << irq_bit_offset;
+	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + irq_word_offset);
 
 	word |= mask;
-	PLIC_REG_WRITE(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset, word);
+	PLIC_REG_WRITE(PLIC_BOOT_CTX_ENABLE_OFFSET + irq_word_offset, word);
 }
 
-void plic_disable_irq(unsigned int irq)
+static void plic_disable_irq(unsigned int irq)
 {
-	__u32 word_offset = irq >> 3; /* (irq / 32) * sizeof(__u32) */
-	__u8 bit_offset = irq & 31; /* irq % 32 */
-	__u32 mask = ~(1 << bit_offset);
-	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset);
+	__u32 irq_word_offset = irq >> 3; /* (irq / 32) * sizeof(__u32) */
+	__u8 irq_bit_offset = irq & 31; /* irq % 32 */
+	__u32 mask = ~(1 << irq_bit_offset);
+	__u32 word = PLIC_REG_READ(PLIC_BOOT_CTX_ENABLE_OFFSET + irq_word_offset);
 
 	word &= mask;
-	PLIC_REG_WRITE(PLIC_BOOT_CTX_ENABLE_OFFSET + word_offset, word);
+	PLIC_REG_WRITE(PLIC_BOOT_CTX_ENABLE_OFFSET + irq_word_offset, word);
 }
 
-void plic_set_priority(unsigned int irq, __u32 priority)
+static void plic_set_priority(unsigned int irq, __u32 priority)
 {
 	PLIC_REG_WRITE(PLIC_PRIORITIES_OFFSET + irq * sizeof(__u32), priority);
 }
 
-void plic_set_priority_threshold(__u32 threshold)
+static void plic_set_priority_threshold(__u32 threshold)
 {
 	PLIC_REG_WRITE(PLIC_BOOT_CTX_PRIORITY_THRESHOLDS_OFFSET, threshold);
 }
 
-unsigned int plic_claim(void)
+static unsigned int plic_claim(void)
 {
 	return PLIC_REG_READ(PLIC_BOOT_CTX_CLAIM_OFFSET);
 }
 
-void plic_complete(unsigned int irq)
+static void plic_complete(unsigned int irq)
 {
 	PLIC_REG_WRITE(PLIC_BOOT_CTX_COMPLETE_OFFSET, irq);
 }
 
 void plic_handle_irq(struct __regs *regs)
 {
-	unsigned int irq;
+	unsigned int irq = plic_claim();
 
-	irq = plic_claim();
 	/* Run the handler as long as there is an interrupt pending */
 	while (irq) {
-		if (irq >= __MAX_IRQ)
+		if (unlikely(irq >= __MAX_IRQ))
 			UK_CRASH("Invalid IRQ, crashing...\n");
-		_ukplat_irq_handle(regs, irq);
+
+		uk_intctlr_irq_handle(regs, irq);
+		plic_complete(irq);
+
 		irq = plic_claim();
 	}
 }
 
-int init_plic(void *dtb)
+static void plic_unmask_irq(unsigned int irq)
 {
-	plic_mmio_base = _dtb_get_plic_base(dtb);
-	if (!plic_mmio_base)
+	/*
+	 * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't
+	 * exist. We use IRQ 0 as an internal convention for timer interrupts.
+	 * Those are manipulated through Control Status Registers, not the PLIC,
+	 * hence timer interrupts are not treated as external interrupts.
+	 */
+	if (irq)
+		plic_enable_irq(irq), plic_set_priority(irq, 1);
+	else
+		/*
+		 * Sets the enable supervisor timer interrupt bit.
+		 * A timer interrupt actually fires only when a timer event has
+		 * been scheduled via SBI, which in turn uses machine mode
+		 * specific CSRs (such as mtimecmp) to program a timer alarm.
+		 */
+		_csr_set(CSR_SIE, SIP_STIP);
+}
+
+static void plic_mask_irq(unsigned int irq)
+{
+	if (irq)
+		plic_disable_irq(irq);
+	else
+		/* Disable timer interrupts */
+		_csr_clear(CSR_SIE, SIP_STIP);
+}
+
+static int plic_configure_irq(struct uk_intctlr_irq *irq __unused)
+{
+	return 0;
+}
+
+static int plic_fdt_xlat(struct uk_intctlr_irq *irq __unused)
+{
+	// TODO:
+	return 0;
+}
+
+int plic_init(struct uk_intctlr_driver_ops **ops)
+{
+	int rc = plic_probe();
+	if (rc < 0)
 		return -1;
 
+	*ops = &plic_ops;
 	plic_set_priority_threshold(0);
+
 	return 0;
 }

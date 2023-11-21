@@ -29,18 +29,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __PLAT_COMMON_RISCV64_PLIC_H__
-#define __PLAT_COMMON_RISCV64_PLIC_H__
+#ifndef __RISCV64_PLIC_H__
+#define __RISCV64_PLIC_H__
 #include <uk/arch/types.h>
 #include <uk/plat/irq.h>
+#include <uk/intctlr.h>
 
-int init_plic(void *dtb);
-void plic_enable_irq(unsigned int irq);
-void plic_disable_irq(unsigned int irq);
-void plic_set_priority(unsigned int irq, __u32 priority);
-void plic_set_priority_threshold(__u32 threshold);
-unsigned int plic_claim(void);
-void plic_complete(unsigned int irq);
+int plic_init(struct uk_intctlr_driver_ops **ops);
 void plic_handle_irq(struct __regs *regs);
 
 #endif

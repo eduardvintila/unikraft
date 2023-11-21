@@ -35,6 +35,7 @@
 #include <uk/bitops.h>
 #include <uk/plat/common/cpu.h>
 #include <uk/plat/common/irq.h>
+#include <uk/intctlr.h>
 #include <riscv/sbi.h>
 #include <riscv/time.h>
 #include <kvm/config.h>
@@ -69,7 +70,7 @@ void ukplat_time_init(void)
 	if (rc < 0)
 		UK_CRASH("Could not initialize the RISC-V timer\n");
 
-	rc = ukplat_irq_register(0, timer_irq_handler, NULL);
+	rc = uk_intctlr_irq_register(0, timer_irq_handler, NULL);
 	if (rc < 0)
 		UK_CRASH("Could not register the timer interrupt handler\n");
 }

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Eduard Vintila <eduard.vintila47@gmail.com>
+ * Authors: Eduard Vintilă <eduard.vintila47@gmail.com>
  *
  * Copyright (c) 2022, University of Bucharest. All rights reserved.
  *
@@ -31,64 +31,25 @@
  */
 #include <riscv/cpu_defs.h>
 #include <riscv/cpu.h>
-#include <riscv/plic.h>
-#include <riscv/sbi.h>
-#include <kvm/config.h>
 #include <uk/assert.h>
+#include <uk/intctlr.h>
+#include <uk/intctlr/plic.h>
 
-void intctrl_clear_irq(unsigned int irq)
+struct uk_intctlr_desc intctlr;
+
+int uk_intctlr_probe(void)
 {
-	/*
-	 * The RISC-V PLIC spec specifies that global interrupt source 0 doesn't
-	 * exist. We use IRQ 0 as an internal convention for timer interrupts.
-	 * Those are manipulated through Control Status Registers, not the PLIC,
-	 * hence timer interrupts are not treated as external interrupts.
-	 */
-	if (irq)
-		plic_enable_irq(irq), plic_set_priority(irq, 1);
-	else
-		/*
-		 * Sets the enable supervisor timer interrupt bit.
-		 * A timer interrupt actually fires only when a timer event has
-		 * been scheduled via SBI, which in turn uses machine mode
-		 * specific CSRs (such as mtimecmp) to program a timer alarm.
-		 */
-		_csr_set(CSR_SIE, SIP_STIP);
-}
+	int rc = -ENODEV;
+	struct uk_intctlr_driver_ops *ops;
 
-void intctrl_mask_irq(unsigned int irq)
-{
-	if (irq)
-		plic_disable_irq(irq);
-	else
-		_csr_clear(CSR_SIE, SIP_STIP);
-}
-
-void intctrl_ack_irq(unsigned int irq)
-{
-	if (irq) {
-		plic_complete(irq);
-	} else {
-		/*
-		 * From the RISC-V SBI spec: "If the supervisor wishes to clear
-		 * the timer interrupt without scheduling the next timer event,
-		 * it can request a timer interrupt infinitely far into the
-		 * future (i.e., (uint64_t)-1)."
-		 *
-		 * Essentialy this is used to clear the timer interrupt pending
-		 * bit to mark that the interrupt has been acknowledged.
-		 */
-		sbi_set_timer((__u64)-1);
-	}
-}
-
-void intctrl_init(void)
-{
-	int rc;
-
-	rc = init_plic(_libkvmplat_cfg.dtb);
+#if CONFIG_LIBUKINTCTLR_PLIC
+	rc = plic_probe(&ops);
 	if (rc < 0)
 		UK_CRASH("Interrupt controller not found, crashing...\n");
+	intctlr.name = "RISC-V PLIC";
+	intctlr.ops = ops;
+#endif
+	_csr_set(CSR_SIE, SIP_SEIP); /* Enable external interrupts */
 
-	_csr_set(CSR_SIE, SIP_SEIP); // Enable external interrupts
+	return uk_intctlr_register(&intctlr);
 }
